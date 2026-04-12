@@ -16,12 +16,12 @@ namespace Horizon.Server
     internal static class Config
     {
         // Static settings
-        internal static readonly string siteName = "patreon.com/unknownv2";            
+        internal static readonly string siteName = "github.com/mzzvxm";            
         internal static byte[] clientIV;
         internal static readonly string clientVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
         internal static string devTag = String.Empty;
         internal static bool enableCompression = false;
-        internal static readonly string serverURL = "patreon.com/unknownv2";
+        internal static readonly string serverURL = "github.com/mzzvxm";
         internal static byte[] clientAES
         {
             get { return Functions.Global.hexStringToArray(_clientAES.Reverse()); }

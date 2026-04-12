@@ -209,7 +209,7 @@ namespace ForzaMotorsport
     public class ForzaScreenshot
     {
         private readonly EndianIO _io;
-        private static byte[] _aesKey, _shaKey;
+        private readonly byte[] _aesKey, _shaKey;
         private readonly byte[] _creator;
         private readonly GlobalForzaSecurity _forzaSecurity;
 
@@ -219,16 +219,14 @@ namespace ForzaMotorsport
                 io.Open();
 
             _creator = Horizon.Functions.Global.convertToBigEndian(BitConverter.GetBytes(creatorId));
-
-            if (_aesKey == null || _shaKey == null)
+            switch (forzaVersion)
             {
-                switch (forzaVersion)
-                {
-                    case ForzaVersion.ForzaHorizon:
-                        _aesKey = GlobalForzaSecurity.TransformHorizonSessionKey(aesKey, _creator, 5);
-                        _shaKey = GlobalForzaSecurity.TransformHorizonSessionKey(hmacKey, _creator, 4);
-                        break;
-                }
+                case ForzaVersion.ForzaHorizon:
+                    _aesKey = GlobalForzaSecurity.TransformHorizonSessionKey(aesKey, _creator, 5);
+                    _shaKey = GlobalForzaSecurity.TransformHorizonSessionKey(hmacKey, _creator, 4);
+                    break;
+                default:
+                    throw new ForzaException("Unsupported Forza screenshot version.");
             }
             _io = io;
             _forzaSecurity = new GlobalForzaSecurity(ForzaVersion.ForzaHorizon, _aesKey, _shaKey);
@@ -1314,6 +1312,11 @@ namespace ForzaMotorsport
         }
         public static byte[] TransformHorizonSessionKey(byte[] baseKey, byte[] creatorId, int obfStartIndex)
         {
+            if (baseKey == null || baseKey.Length == 0)
+                throw new ForzaException("Missing Forza Horizon key material.");
+            if (creatorId == null || creatorId.Length < 8)
+                throw new ForzaException("Invalid Forza Horizon creator identifier.");
+
             int keySize = baseKey.Length, mask = keySize - 1;
             byte[] key = new byte[keySize];
             Int64 num4 = 0;

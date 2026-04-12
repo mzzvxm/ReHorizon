@@ -154,7 +154,7 @@ namespace Horizon.Forms
             this.cmdVisitUs.Size = new System.Drawing.Size(346, 40);
             this.cmdVisitUs.Style = DevComponents.DotNetBar.eDotNetBarStyle.StyleManagerControlled;
             this.cmdVisitUs.TabIndex = 2;
-            this.cmdVisitUs.Text = "patreon.com/unknownv2";
+            this.cmdVisitUs.Text = "github.com/mzzvxm";
             this.cmdVisitUs.Click += new System.EventHandler(this.cmdVisitUs_Click);
             // 
             // gpDevelopers

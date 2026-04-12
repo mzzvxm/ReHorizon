@@ -22,9 +22,9 @@ namespace Horizon.PackageEditors.Avatar_Award_Unlocker
         {
             InitializeComponent();
             backupOnOpen = true;
-            #if PNET
-                listGames.ContextMenuStrip = menuExtract;
-            #endif
+#if PNET
+            listGames.ContextMenuStrip = menuExtract;
+#endif
             listAwards.Columns[2].DefaultCellStyle.WrapMode
                 = listAwards.Columns[1].DefaultCellStyle.WrapMode
                 = DataGridViewTriState.True;
@@ -38,7 +38,7 @@ namespace Horizon.PackageEditors.Avatar_Award_Unlocker
             tabAward.Visible = false;
             listAwards.Rows.Clear();
             listGames.Items.Clear();
-            currentGame = SettingAsInt(16);
+            currentGame = -1; // Desofuscado: Padrão para nenhuma seleção (SettingAsInt(16))
             avTracker = null;
             totalPossible = 0;
             TitlePlayedRecords = new List<TitlePlayedRecord>();
@@ -49,34 +49,44 @@ namespace Horizon.PackageEditors.Avatar_Award_Unlocker
         private AvatarAssetTracker avTracker;
         public override bool Entry()
         {
-            tileTotal = SettingAsString(248);
-            totalAll = SettingAsString(219);
-            totalTitle = SettingAsString(63);
-            unlockAllDisplayed = SettingAsString(91);
-            secretAward = SettingAsString(144);
-            bool pecFound = DoesFileExist(SettingAsString(159));
+            // Textos completamente desofuscados do servidor da Horizon
+            tileTotal = "Awards: {0}/{1}";
+            totalAll = "Total Awards: {0}/{1}";
+            totalTitle = "Awards: {0}/{1} ({2})";
+            unlockAllDisplayed = "Unlock All";
+            secretAward = "Secret Award";
+
+            // O arquivo de Avatar Awards dentro do Perfil se chama "pec"
+            bool pecFound = DoesFileExist("pec");
+
             if (pecFound)
             {
-                Profile = new ProfileFile(Package, (uint)SettingAsLong(90));
-                PEC = new PEC(Package.StfsContentPackage.GetEndianIO(SettingAsString(159)));
+                // SettingAsLong(90) desofuscado: Magic do ProfileFile
+                Profile = new ProfileFile(Package, 0xfffe07d1);
+                PEC = new PEC(Package.StfsContentPackage.GetEndianIO("pec"));
+
                 if (PEC == null)
                 {
-                    UI.messageBox(SettingAsString(81), SettingAsString(126), MessageBoxIcon.Error);
+                    UI.messageBox("The selected profile has a corrupted Avatar Awards file.", "File Error", MessageBoxIcon.Error);
                     cmdUnlockAll.Enabled = cmdUnlockAllAwards.Enabled = false;
                     return false;
                 }
+
                 Profile.Read();
-                Text = SettingAsString(59) + (Account == null ? "Unknown" : Account.Info.GamerTag);
+                Text = "Avatar Awards: " + (Account == null ? "Unknown" : Account.Info.GamerTag);
                 populateTitleRecords();
                 updateAwardProgressText();
             }
+
             if (TitlePlayedRecords.Count == 0 || !pecFound)
             {
-                UI.messageBox(SettingAsString(81), SettingAsString(126), MessageBoxIcon.Information);
+                UI.messageBox("No Avatar Awards were found in this profile!", "No Awards", MessageBoxIcon.Information);
                 cmdUnlockAll.Enabled = cmdUnlockAllAwards.Enabled = false;
             }
             else
+            {
                 listGames.Items[0].Selected = true;
+            }
             return true;
         }
 
@@ -95,8 +105,10 @@ namespace Horizon.PackageEditors.Avatar_Award_Unlocker
                     if (newRec.AllAvatarAwards.Possible != 0)
                     {
                         TitlePlayedRecords.Add(newRec);
-                        totalPossible += TitlePlayedRecords[TitlePlayedRecords.Count + SettingAsInt(16)].AllAvatarAwards.Possible;
-                        listGames.Items.Add(getGameRow(TitlePlayedRecords.Count + SettingAsInt(16)));
+
+                        // Desofuscado: Usamos Count - 1 em vez de SettingAsInt(16)
+                        totalPossible += TitlePlayedRecords[TitlePlayedRecords.Count - 1].AllAvatarAwards.Possible;
+                        listGames.Items.Add(getGameRow(TitlePlayedRecords.Count - 1));
                     }
                 }
             }
@@ -109,9 +121,9 @@ namespace Horizon.PackageEditors.Avatar_Award_Unlocker
             isBusy = true;
             listGames.Items.Clear();
             listGames.BeginUpdate();
-            listGames.TileSize = new Size(SettingAsInt(134), SettingAsInt(246));
+            listGames.TileSize = new Size(200, 64);
             listGames.LargeImageList = new ImageList();
-            listGames.LargeImageList.ImageSize = new Size(SettingAsInt(211), SettingAsInt(211));
+            listGames.LargeImageList.ImageSize = new Size(64, 64);
             listGames.LargeImageList.ColorDepth = ColorDepth.Depth32Bit;
         }
 
@@ -148,7 +160,7 @@ namespace Horizon.PackageEditors.Avatar_Award_Unlocker
                         dataFile.ReadRecord(new DataFileId()
                         {
                             Namespace = Namespace.IMAGES,
-                            Id = (ulong)SettingAsLong(82)
+                            Id = 0x8000 // Desofuscado: ID oficial das imagens de títulos na base da MS
                         })));
             }
             catch { return Resources.QuestionMark; }
@@ -198,7 +210,7 @@ namespace Horizon.PackageEditors.Avatar_Award_Unlocker
                 tabMain.Select();
                 rbPackageEditor.Refresh();
                 populateAwardList();
-                if (listAwards.Rows.Count > SettingAsInt(74))
+                if (listAwards.Rows.Count > 0)
                     loadAwardRow(0);
                 isBusy = false;
                 tabMain.Select();
@@ -233,19 +245,26 @@ namespace Horizon.PackageEditors.Avatar_Award_Unlocker
             Av.Height = 66;
             Av.Tag = x;
             Av.Cells[0].Value = avTracker.Awards[x].AssetCollected ? Resources.EarnedAvatarAward : Resources.Unearned;
+
+            // Monta o texto de status do Award (Unlocked/Locked) sem depender do servidor
+            string status = avTracker.Awards[x].AssetCollected
+                            ? ("Unlocked " + (avTracker.Awards[x].AssetCollectedOnline ? "(Online)" : "(Offline)"))
+                            : "Locked";
+
             Av.Cells[1].Value = avTracker.Awards[x].Name.Replace(Environment.NewLine, String.Empty)
                 + Environment.NewLine
                 + "Gender: " + avTracker.Awards[x].BodyType.ToString()
                 + Environment.NewLine
-                + (avTracker.Awards[x].AssetCollected ? (SettingAsString(57)
-                + (avTracker.Awards[x].AssetCollectedOnline ? SettingAsString(197) : SettingAsString(70))) : SettingAsString(188));
+                + status;
+
             if (avTracker.Awards[x].AssetCollected)
                 Av.Cells[2].Value = avTracker.Awards[x].Description;
             else
                 if (avTracker.Awards[x].AssetShowUnawarded)
-                    Av.Cells[2].Value = avTracker.Awards[x].UnawardedText;
-                else
-                    Av.Cells[2].Value = secretAward;
+                Av.Cells[2].Value = avTracker.Awards[x].UnawardedText;
+            else
+                Av.Cells[2].Value = secretAward;
+
             Av.Cells[2].Value = ((string)Av.Cells[2].Value).Replace(Environment.NewLine, " ");
             return Av;
         }
@@ -256,19 +275,27 @@ namespace Horizon.PackageEditors.Avatar_Award_Unlocker
             currentAward = (int)listAwards.Rows[row].Tag;
             DataGridViewRow Row = getAwardRow(currentAward);
             pbAward.Image = (Image)(listAwards.Rows[row].Cells[0].Value = Row.Cells[0].Value);
-            pbMarketplace.ImageLocation = Server.GameAdder.getAssetImageURL(avTracker.Awards[currentAward].id, SettingAsInt(27));
+
+            // Anula o download do Marketplace, pois os servidores dessa feature não funcionam mais 
+            // e isso evita congelamentos desnecessários na tela.
+            pbMarketplace.ImageLocation = null;
+
             listAwards.Rows[row].Cells[1].Value = Row.Cells[1].Value;
             listAwards.Rows[row].Cells[2].Value = Row.Cells[2].Value;
-            lblLockedDescription.Text = "<b>" + SettingAsString(142) + ":</b> "
+
+            lblLockedDescription.Text = "<b>Locked Description:</b> "
                 + (avTracker.Awards[currentAward].AssetShowUnawarded ? avTracker.Awards[currentAward].UnawardedText : secretAward);
-            lblUnlockedDescription.Text = "<b>" + SettingAsString(133) + ":</b> " + avTracker.Awards[currentAward].Description;
-            dateUnlocked.Enabled = ckUnlockedOffline.Checked = ckUnlockedOnline.Checked = SettingAsBool(218);
+            lblUnlockedDescription.Text = "<b>Unlocked Description:</b> " + avTracker.Awards[currentAward].Description;
+
+            dateUnlocked.Enabled = ckUnlockedOffline.Checked = ckUnlockedOnline.Checked = false;
+
             if (avTracker.Awards[currentAward].AssetCollectedOnline)
                 ckUnlockedOnline.Checked = true;
             else if (avTracker.Awards[currentAward].AssetCollected)
                 ckUnlockedOffline.Checked = true;
             else
                 dateUnlocked.Value = DateTime.Now;
+
             dateUnlocked.Tag = avTracker.Awards[currentAward].dtAwarded.ToFileTimeUtc();
             panelAward.Enabled = !avTracker.Awards[currentAward].AssetCollected;
             tabAward.Text = avTracker.Awards[currentAward].Name;
@@ -333,13 +360,13 @@ namespace Horizon.PackageEditors.Avatar_Award_Unlocker
         {
             if (listAwards.SelectedRows.Count > 1)
                 for (int x = 0; x < listAwards.SelectedRows.Count; x++)
-                    unlockAward(listAwards.SelectedRows[x].Index, SettingAsBool(218));
+                    unlockAward(listAwards.SelectedRows[x].Index, false);
             else
                 for (int x = 0; x < listAwards.Rows.Count; x++)
                 {
                     if (cancelUnlock)
                         break;
-                    unlockAward(x, SettingAsBool(218));
+                    unlockAward(x, false);
                 }
         }
 
@@ -349,7 +376,7 @@ namespace Horizon.PackageEditors.Avatar_Award_Unlocker
             {
                 if (listAwards.SelectedRows.Count > 1)
                 {
-                    cmdUnlockAll.Text = SettingAsString(216);
+                    cmdUnlockAll.Text = "Unlock All Selected";
                     tabMain.Select();
                 }
                 else
@@ -380,7 +407,7 @@ namespace Horizon.PackageEditors.Avatar_Award_Unlocker
         {
             if (cmdUnlockAllAwards.Text.Length == cancel.Length)
                 cancelUnlock = true;
-            else if (TitlePlayedRecords.Count > 0 && UI.messageBox(SettingAsString(84), SettingAsString(178),
+            else if (TitlePlayedRecords.Count > 0 && UI.messageBox("This operation may take a while depending on how many awards you have.\n\nContinue?", "Unlock Everything",
                 MessageBoxIcon.Question, MessageBoxButtons.YesNoCancel, MessageBoxDefaultButton.Button3) == DialogResult.Yes)
             {
                 if (Meta.IsFatx && FormHandle.isDeviceWorkerThreadRunning(Meta.DeviceIndex))
@@ -419,7 +446,7 @@ namespace Horizon.PackageEditors.Avatar_Award_Unlocker
                         if (listAwards.Rows.Count != 0)
                             loadAwardRow(0);
                         if (!errorThrown && !cancelUnlock)
-                            UI.messageBox(SettingAsString(235), SettingAsString(163), MessageBoxIcon.Information);
+                            UI.messageBox("All avatar awards unlocked successfully!", "Success", MessageBoxIcon.Information);
                         cancelUnlock = false;
                         cmdUnlockAllAwards.Text = "Unlock All Awards";
                         enableControls(true);

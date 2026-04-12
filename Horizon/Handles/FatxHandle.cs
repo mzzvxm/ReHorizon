@@ -89,6 +89,7 @@ namespace Horizon
             Main.cmdLoadUsbDump.Click += new EventHandler(cmdLoadUsbDump_Click);
             Main.cmdFatxUnload.Click += new EventHandler(cmdFatxUnload_Click);
             #endif
+            Main.cmdConnectFtp.Click += new EventHandler(cmdConnectFtp_Click);
             deviceEventThread = new Thread((ThreadStart)deviceEventWatcher);
             deviceEventThread.Start();
         }
@@ -181,7 +182,8 @@ namespace Horizon
             for (int x = 0; x < Devices.Count; x++)
             {
                 FormHandle.unloadFatxForms(x);
-                Devices[x].Drive.CloseDisk();
+                if (!Devices[x].IsRemoteFtp)
+                    Devices[x].Drive.CloseDisk();
             }
             Main.listFatx.Nodes.Clear();
             Devices.Clear();
@@ -226,7 +228,7 @@ namespace Horizon
             for (int x = 0; x < Main.listFatx.Nodes.Count; x++)
             {
                 int devIndex = ((FatxNode)Main.listFatx.Nodes[x].Tag).DeviceIndex;
-                if (devIndex != (int)Main.tabFatxDrive.Tag)
+                if (devIndex != (int)Main.tabFatxDrive.Tag && !Devices[devIndex].IsRemoteFtp)
                 {
                     ToolStripMenuItem newCopyItem = new ToolStripMenuItem();
                     newCopyItem.Tag = devIndex;
@@ -255,6 +257,74 @@ namespace Horizon
                 Main.cmdFatxCopyFile.DropDownItems.RemoveAt(1);
         }
 
+        private static void cmdConnectFtp_Click(object sender, EventArgs e)
+        {
+            List<DeviceInfo> connectedDevices = new List<DeviceInfo>();
+            using (Horizon.Forms.FtpConnectDialog dialog = new Horizon.Forms.FtpConnectDialog())
+            {
+                dialog.ConnectHandler = delegate(Horizon.Forms.FtpConnectDialog currentDialog)
+                {
+                    currentDialog.SetStatus("Creating FTP client...");
+                    FtpClient client = new FtpClient(currentDialog.Host, currentDialog.Port, currentDialog.Username, currentDialog.Password);
+                    string[] roots = currentDialog.Roots.Length == 0
+                        ? new string[] { "Hdd1:", "Usb0:", "Usb1:" }
+                        : currentDialog.Roots;
+
+                    connectedDevices.Clear();
+                    foreach (string rootValue in roots)
+                    {
+                        string root = rootValue.Trim();
+                        if (root.Length == 0)
+                            continue;
+
+                        bool alreadyLoaded = false;
+                        for (int i = 0; i < Devices.Count; i++)
+                            if (Devices[i].IsRemoteFtp && Devices[i].RemoteIdentifier == (client.Host + "|" + root))
+                            {
+                                alreadyLoaded = true;
+                                break;
+                            }
+
+                        if (alreadyLoaded)
+                            continue;
+
+                        currentDialog.SetStatus("Testing " + root + "...");
+                        DeviceInfo remoteDevice = new DeviceInfo(client, root, currentDialog.SetStatus);
+                        if (remoteDevice.RemoteAvailable)
+                            connectedDevices.Add(remoteDevice);
+                        else if (remoteDevice.RemoteError != null)
+                            currentDialog.SetStatus(root + ": " + remoteDevice.RemoteError);
+                    }
+
+                    if (connectedDevices.Count == 0)
+                        return "No valid FTP roots were found. Last result: " + currentDialog.StatusText;
+
+                    return null;
+                };
+
+                if (dialog.ShowDialog(Main) != DialogResult.OK)
+                    return;
+
+                int added = 0;
+                foreach (DeviceInfo remoteDevice in connectedDevices)
+                {
+                    Devices.Add(remoteDevice);
+                    Main.listFatx.Nodes.Add(buildFatxNode(new FatxNode(Devices.Count - 1, NodeTypes.Device), remoteDevice.DeviceImage));
+                    added++;
+                }
+
+                refreshDeviceCounter();
+                if (Main.listFatx.Nodes.Count > 0)
+                {
+                    Main.listFatx.SelectedIndex = Main.listFatx.Nodes.Count - added;
+                    if (Program.doneLoading)
+                        Main.FatxPanelExpanded = true;
+                    else
+                        openOnOpen = true;
+                }
+            }
+        }
+
         private static void deviceEventWatcher()
         {
             scanForNewDevices(true);
@@ -281,7 +351,8 @@ namespace Horizon
             updateProgressBar(ProgressBarStyle.Marquee, 0, 0);
             List<string> loadedNames = new List<string>();
             for (int x = 0; x < Main.listFatx.Nodes.Count; x++)
-                loadedNames.Add(((FatxNode)Main.listFatx.Nodes[x].Tag).Device.Drive.Name);
+                if (!((FatxNode)Main.listFatx.Nodes[x].Tag).Device.IsRemoteFtp)
+                    loadedNames.Add(((FatxNode)Main.listFatx.Nodes[x].Tag).Device.Drive.Name);
             FatxDeviceControl.DriveBase[] driveBases = FatxDeviceControl.getFatxDevices(loadedNames);
             for (int x = 0; x < driveBases.Length; x++)
             {
@@ -330,7 +401,7 @@ namespace Horizon
             for (int x = 0; x < Main.listFatx.Nodes.Count; x++)
             {
                 int devIndex = ((FatxNode)Main.listFatx.Nodes[x].Tag).DeviceIndex;
-                if (!Devices[devIndex].Drive.Mounted)
+                if (!Devices[devIndex].IsRemoteFtp && !Devices[devIndex].Drive.Mounted)
                 {
                     bool wasCurrentDevice = false;
                     Main.Invoke((MethodInvoker)delegate
@@ -462,7 +533,7 @@ namespace Horizon
             {
                 var nodeTag = (FatxNode)Main.listFatx.Nodes[x].Tag;
 
-                if (nodeTag.DeviceIndex == exclude)
+                if (nodeTag.DeviceIndex == exclude || nodeTag.Device.IsRemoteFtp)
                     continue;
 
                 var i = new ButtonItem("cmdUseDevice" + x);
@@ -595,10 +666,99 @@ namespace Horizon
         }
 
         private static readonly string unknownGame = "Unknown Game";
+        private static Node[] traverseRemoteFtpDevice(FatxNode nodeTag, bool publicOnly, bool indexing, bool lockId, uint lockIdValue)
+        {
+            List<Node> listNodes = new List<Node>();
+            List<uint> usedTitleIds = new List<uint>();
+            List<FtpClient.Entry> profileEntries = nodeTag.Device.RemoteListDirectory(buildDirectoryPath());
+            foreach (FtpClient.Entry profile in profileEntries)
+            {
+                ulong profileId;
+                if (!profile.IsDirectory || !ulong.TryParse(profile.Name, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out profileId) || (profileId == 0 && publicOnly))
+                    continue;
+
+                List<FtpClient.Entry> titleEntries = nodeTag.Device.RemoteListDirectory(buildDirectoryPath(profileId));
+                foreach (FtpClient.Entry title in titleEntries)
+                {
+                    uint titleId;
+                    if (!title.IsDirectory || !uint.TryParse(title.Name, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out titleId) || (lockId && titleId != lockIdValue))
+                        continue;
+
+                    List<FtpClient.Entry> typeEntries = nodeTag.Device.RemoteListDirectory(buildDirectoryPath(profileId, titleId));
+
+                    if (indexing)
+                    {
+                        if (!TitleIDCache.ContainsKey(titleId))
+                            addTitleIDToCache(titleId, "");
+
+                        if (!usedTitleIds.Contains(titleId))
+                        {
+                            FatxNode newNode = new FatxNode(nodeTag.DeviceIndex, NodeTypes.Game);
+                            usedTitleIds.Add(newNode.NodeInfo.TitleID = titleId);
+                            listNodes.Add(buildFatxNode(newNode, getGameNodeImage(titleId)));
+                        }
+                        continue;
+                    }
+
+                    foreach (FtpClient.Entry type in typeEntries)
+                    {
+                        int typeValue;
+                        if (!type.IsDirectory || !int.TryParse(type.Name, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out typeValue)
+                            || getGeneralContentType((ContentTypes)typeValue) != nodeTag.GeneralContentType)
+                            continue;
+
+                        List<FtpClient.Entry> fileEntries = nodeTag.Device.RemoteListDirectory(buildDirectoryPath(profileId, titleId, (ContentTypes)typeValue));
+                        int currentEntry = 1;
+                        foreach (FtpClient.Entry entry in fileEntries)
+                        {
+                            if (entry.IsDirectory)
+                                continue;
+
+                            try
+                            {
+                                EndianIO packageIo = nodeTag.Device.RemoteClient.DownloadFileToIO(entry.FullPath);
+                                XContentPackage package = new XContentPackage();
+                                if (package.LoadPackage(packageIo, false))
+                                {
+                                    if (package.Header.Metadata.ContentType == (ContentTypes)typeValue
+                                        && package.Header.Metadata.Creator == profileId)
+                                    {
+                                        FatxNode newNode = new FatxNode(nodeTag.DeviceIndex, NodeTypes.Package);
+                                        newNode.NodeInfo.ContentType = (ContentTypes)typeValue;
+                                        newNode.NodeInfo.ReadOnly = true;
+                                        newNode.NodeInfo.RemotePath = entry.FullPath;
+                                        newNode.NodeInfo.RemoteSize = entry.Size;
+                                        newNode.NodeInfo.RemoteModified = entry.Modified;
+                                        fillPackageNode(newNode, package);
+                                        newNode.NodeInfo.ProfileID = profileId;
+                                        newNode.NodeInfo.TitleID = titleId;
+                                        listNodes.Add(buildFatxNode(newNode, imageFromPackage(package)));
+                                    }
+                                    package.CloseIO(true);
+                                }
+                            }
+                            catch { }
+                            currentEntry++;
+                        }
+                    }
+
+                    if (indexing && TitleIDCache.ContainsKey(titleId) && !usedTitleIds.Contains(titleId))
+                    {
+                        FatxNode newNode = new FatxNode(nodeTag.DeviceIndex, NodeTypes.Game);
+                        usedTitleIds.Add(newNode.NodeInfo.TitleID = titleId);
+                        listNodes.Add(buildFatxNode(newNode, getGameNodeImage(titleId)));
+                    }
+                }
+            }
+            return listNodes.ToArray();
+        }
+
         private static Node[] traverseDevice(FatxNode nodeTag, bool publicOnly, bool indexing, bool lockId, uint lockIdValue)
         {
             if (nodeTag.Device.IsFat32)
                 return traverseFat32Device(nodeTag, publicOnly, indexing, lockId, lockIdValue);
+            if (nodeTag.Device.IsRemoteFtp)
+                return traverseRemoteFtpDevice(nodeTag, publicOnly, indexing, lockId, lockIdValue);
             List<Node> listNodes = new List<Node>();
             List<uint> usedTitleIds = new List<uint>();
             List<FatxDirectoryEntry> profileEntries = nodeTag.Device.Handle.GetNestedDirectoryEntries(buildDirectoryPath());
@@ -749,8 +909,12 @@ namespace Horizon
             newTag.NodeInfo.TitleID = dashTitleId;
             newTag.NodeInfo.Entry = pI.Entry;
             newTag.NodeInfo.Fat32FileInfo = pI.Fat32FileInfo;
+            newTag.NodeInfo.RemotePath = pI.RemotePath;
+            newTag.NodeInfo.RemoteSize = pI.RemoteSize;
+            newTag.NodeInfo.RemoteModified = pI.RemoteModified;
             newTag.NodeInfo.DisplayName = pI.Gamertag;
             newTag.NodeInfo.ContentType = ContentTypes.Profile;
+            newTag.NodeInfo.ReadOnly = pI.RemotePath != null;
             return buildFatxNode(newTag, pI.Gamerpic);
         }
 
@@ -806,6 +970,28 @@ namespace Horizon
                         else
                         {
                             if (nodeTag.NodeType == NodeTypes.ContentFolder)
+                            {
+                                if (nodeTag.Device.IsRemoteFtp)
+                                {
+                                    if (nodeTag.GeneralContentType == GeneralContentTypes.Games)
+                                    {
+                                        e.Node.Nodes.AddRange(traverseDevice(nodeTag, false, true));
+                                        saveTitleIdCache();
+                                    }
+                                    else if (nodeTag.GeneralContentType == GeneralContentTypes.Gamer_Profiles)
+                                    {
+                                        foreach (KeyValuePair<ulong, ProfileInfo> pI in nodeTag.Device.ProfileCache)
+                                            if (pI.Value.Entry != null || pI.Value.Fat32FileInfo != null || pI.Value.RemotePath != null)
+                                                e.Node.Nodes.Add(createProfileNode(nodeTag.DeviceIndex, pI.Key, pI.Value));
+                                    }
+                                    else if (nodeTag.GeneralContentType == GeneralContentTypes.Title_Updates
+                                        || nodeTag.GeneralContentType == GeneralContentTypes.Gamer_Pictures
+                                        || nodeTag.GeneralContentType == GeneralContentTypes.Themes)
+                                        e.Node.Nodes.AddRange(traverseDevice(nodeTag, false, false));
+                                    else
+                                        e.Node.Nodes.AddRange(traverseDevice(nodeTag, true, false));
+                                }
+                                else
                                 switch (nodeTag.GeneralContentType)
                                 {
                                     case GeneralContentTypes.Gamer_Profiles:
@@ -907,6 +1093,7 @@ namespace Horizon
                                         e.Node.Nodes.AddRange(traverseDevice(nodeTag, true, false));
                                         break;
                                 }
+                            }
                             else if (nodeTag.NodeType == NodeTypes.Game)
                                 e.Node.Nodes.AddRange(traverseDevice(nodeTag, false, false, true, nodeTag.NodeInfo.TitleID));
                             if (e.Node.Nodes.Count == 0)
@@ -967,7 +1154,10 @@ namespace Horizon
                 if (isDeviceWorkerAvailable(dragItem.DeviceIndex))
                 {
                     string fileName = e.FullPath.Substring(0, e.FullPath.LastIndexOf('\\')) + @"\" 
-                        + (dragItem.NodeInfo.Fat32FileInfo != null ? dragItem.NodeInfo.Fat32FileInfo.Name : dragItem.NodeInfo.Entry.Filename);
+                        + (dragItem.NodeInfo.Fat32FileInfo != null ? dragItem.NodeInfo.Fat32FileInfo.Name
+                        : (dragItem.NodeInfo.RemotePath != null
+                        ? dragItem.NodeInfo.RemotePath.Substring(dragItem.NodeInfo.RemotePath.LastIndexOf('/') + 1)
+                        : dragItem.NodeInfo.Entry.Filename));
                     if (File.Exists(fileName))
                         File.Delete(fileName);
                     multipleOperationsRunning = numberOfDevicesBusy() > 0;
@@ -1065,7 +1255,8 @@ namespace Horizon
                 Main.tabFatxDrive.Text = nodeTag.Device.Name;
                 Main.Invoke((MethodInvoker)delegate
                 {
-                    Main.cmdFatxToolInject.Enabled = Main.cmdFatxInject.Enabled = true;
+                    bool allowInject = !nodeTag.Device.IsRemoteFtp;
+                    Main.cmdFatxToolInject.Enabled = Main.cmdFatxInject.Enabled = allowInject;
                     Main.rbFatx.Refresh();
                 });
                 Main.fatxMenuLine.Visible = (nodeTag.NodeType == NodeTypes.Device
@@ -1076,9 +1267,10 @@ namespace Horizon
                     = nodeTag.NodeType == NodeTypes.Device;
                 Main.cmdFatxToolCollapseAll.Visible = (nodeTag.NodeType == NodeTypes.ContentFolder
                     && nodeTag.GeneralContentType == GeneralContentTypes.Games);
-                if (Main.cmdFatxGear.Enabled = baseButtonReset(nodeTag.NodeType == NodeTypes.Package
+                bool canOpenEditors = !nodeTag.Device.IsRemoteFtp && nodeTag.NodeType == NodeTypes.Package
                     && (nodeTag.NodeInfo.ContentType != ContentTypes.Profile
-                    || isDeviceWorkerAvailable(nodeTag.DeviceIndex))))
+                    || isDeviceWorkerAvailable(nodeTag.DeviceIndex));
+                if (Main.cmdFatxGear.Enabled = baseButtonReset(canOpenEditors))
                 {
                     if (Main.cmdFatxMod.AutoExpandOnClick = nodeTag.NodeInfo.ContentType == ContentTypes.Profile)
                     {
@@ -1196,6 +1388,13 @@ namespace Horizon
                     gearHandle.FormMetaIndex = FormConfig.getFormMetaIndex(FormID.PackageManager);
                     gearHandle.CachePartition = nodeTag.NodeInfo.CachePartition;
                     Main.cmdFatxGear.Tag = gearHandle;
+                }
+                else if (nodeTag.Device.IsRemoteFtp && nodeTag.NodeType == NodeTypes.Package)
+                {
+                    Main.cmdFatxExtract.Enabled = Main.cmdFatxToolExtract.Enabled = true;
+                    Main.cmdFatxToolDelete.Enabled = Main.cmdFatxCopyFile.Enabled = false;
+                    Main.cmdFatxMod.Image = Resources.QuestionMarkWide;
+                    Main.cmdFatxGear.Enabled = Main.cmdFatxMod.Enabled = false;
                 }
                 else if (nodeTag.NodeInfo.ContentType == ContentTypes.Profile)
                     Main.listFatx.SelectedNode = e.Node.Parent;
@@ -1336,7 +1535,10 @@ namespace Horizon
             {
                 SaveFileDialog sfd = new SaveFileDialog();
                 sfd.Title = "Extracting " + nodeTag.NodeInfo.DisplayName;
-                sfd.FileName = nodeTag.NodeInfo.Fat32FileInfo != null ? nodeTag.NodeInfo.Fat32FileInfo.Name : nodeTag.NodeInfo.Entry.Filename;
+                sfd.FileName = nodeTag.NodeInfo.Fat32FileInfo != null ? nodeTag.NodeInfo.Fat32FileInfo.Name
+                    : (nodeTag.NodeInfo.RemotePath != null
+                    ? nodeTag.NodeInfo.RemotePath.Substring(nodeTag.NodeInfo.RemotePath.LastIndexOf('/') + 1)
+                    : nodeTag.NodeInfo.Entry.Filename);
                 if (sfd.ShowDialog() == DialogResult.OK)
                 {
                     multipleOperationsRunning = numberOfDevicesBusy() > 0;
@@ -1429,12 +1631,16 @@ namespace Horizon
             try
             {
 #endif
-                Stream IO = oP.nodeTag.Device.IsFat32 
+                Stream IO = oP.nodeTag.Device.IsRemoteFtp
+                    ? (Stream)oP.nodeTag.Device.RemoteClient.DownloadFileToIO(fatxPath).Stream
+                    : oP.nodeTag.Device.IsFat32 
                     ? File.OpenRead(oP.nodeTag.Device.Fat32Drive.Name + fatxPath) 
                     : (Stream)oP.nodeTag.Device.Handle.LoadFileStream(fatxPath);
                 fs = new FileStream(oP.FileName, FileMode.Create, FileAccess.Write);
                 if (oP.nodeTag.NodeInfo.Svod)
                 {
+                    if (oP.nodeTag.Device.IsRemoteFtp)
+                        throw new NotSupportedException("FTP extraction for SVOD data-file packages is not supported yet.");
                     byte[] buffer = new byte[oP.nodeTag.NodeInfo.Entry.FileSize];
                     fs.Write(buffer, 0, IO.Read(buffer, 0, buffer.Length));
                     fs.Close();
@@ -1511,7 +1717,7 @@ namespace Horizon
                     IO.Close();
                 }
 
-                if (!oP.nodeTag.Device.IsFat32)
+                if (!oP.nodeTag.Device.IsFat32 && !oP.nodeTag.Device.IsRemoteFtp)
                 {
                     try { File.SetLastAccessTime(oP.FileName, intToDateTime(oP.nodeTag.NodeInfo.Entry.LastAccessTimeStamp)); } catch { }
                     try { File.SetLastWriteTime(oP.FileName, intToDateTime(oP.nodeTag.NodeInfo.Entry.LastWriteTimeStamp)); } catch { }
@@ -1628,6 +1834,11 @@ namespace Horizon
 
         internal static void cmdFatxInject_Click(object sender, EventArgs e)
         {
+            if ((int)Main.tabFatxDrive.Tag != -1 && Devices[(int)Main.tabFatxDrive.Tag].IsRemoteFtp)
+            {
+                UI.errorBox("FTP devices are read-only for now.");
+                return;
+            }
             if (isDeviceWorkerAvailable((int)Main.tabFatxDrive.Tag))
             {
                 OpenFileDialog ofd = new OpenFileDialog();
@@ -2428,6 +2639,8 @@ namespace Horizon
 
         private static string buildDirectoryPath(FatxNode nodeTag)
         {
+            if (nodeTag.NodeInfo.RemotePath != null)
+                return nodeTag.NodeInfo.RemotePath;
             if (nodeTag.NodeInfo.Cache)
                 return String.Format(@"{0}\{1}", cacheFolder, nodeTag.NodeInfo.Entry.Filename);
             return buildDirectoryPath(nodeTag.NodeInfo.ProfileID, nodeTag.NodeInfo.TitleID, nodeTag.NodeInfo.ContentType, 
@@ -2518,6 +2731,9 @@ namespace Horizon
                 return device.Fat32Drive.TotalFreeSpace;
             }
 
+            if (device.IsRemoteFtp)
+                return 0;
+
             return (long)Devices[devIndex].Handle.VolumeExtension.FreedClusterCount
                 * Devices[devIndex].Handle.VolumeExtension.ClusterSize;
         }
@@ -2539,12 +2755,20 @@ namespace Horizon
 
         private static string createFreeSpaceString(int devIndex)
         {
+            if (Devices[devIndex].IsRemoteFtp)
+                return makeGrayText(Devices[devIndex].RemoteRoot);
             return makeGrayText(Global.getFormatFromBytes(getFreeSpace(devIndex)) + " Free");
         }
 
         private static void setDeviceCellOneText(Cell cellOne, FatxNode nodeTag)
         {
             cellOne.Text = nodeTag.Device.Name + lineBreak;
+
+            if (nodeTag.Device.IsRemoteFtp)
+            {
+                cellOne.Text += makeGrayText("FTP Device");
+                return;
+            }
 
             if (nodeTag.Device.IsFat32)
             {
@@ -2627,7 +2851,7 @@ namespace Horizon
                 }
             }
 
-            string timeFormat = "M/d/yyyy";
+            string timeFormat = "d/MM/yyyy";
 
             if (nodeTag.NodeInfo.Fat32FileInfo != null)
             {
@@ -2641,6 +2865,18 @@ namespace Horizon
                                           fileinfo.CreationTime.ToString(timeFormat);
                 fatxNode.Cells[1].Text += lineBreak + makeGrayText("Modified: ") +
                                           fileinfo.LastWriteTime.ToString(timeFormat);
+            }
+            else if (nodeTag.NodeInfo.RemotePath != null)
+            {
+                fatxNode.Cells[1].Text = makeGrayText("Size: ") +
+                                         Global.getFormatFromBytes(nodeTag.NodeInfo.Svod
+                                             ? (long)nodeTag.NodeInfo.DataFilesSize
+                                             : nodeTag.NodeInfo.RemoteSize);
+                fatxNode.Cells[1].Text += lineBreak + makeGrayText("Modified: ") +
+                                          (nodeTag.NodeInfo.RemoteModified == DateTime.MinValue
+                                              ? "Unknown"
+                                              : nodeTag.NodeInfo.RemoteModified.ToString(timeFormat));
+                fatxNode.Cells[1].Text += lineBreak + makeGrayText("Source: FTP");
             }
             else
             {
@@ -2679,6 +2915,9 @@ namespace Horizon
         {
             internal FatxDirectoryEntry Entry;
             internal FileInfo Fat32FileInfo;
+            internal string RemotePath;
+            internal long RemoteSize;
+            internal DateTime RemoteModified;
             internal ContentTypes ContentType;
             internal string DisplayName;
             internal ulong ProfileID;
@@ -2817,6 +3056,9 @@ namespace Horizon
             internal ulong XUID;
             internal FatxDirectoryEntry Entry;
             internal FileInfo Fat32FileInfo;
+            internal string RemotePath;
+            internal long RemoteSize;
+            internal DateTime RemoteModified;
         }
 
         internal static FatxDirectoryEntry getFileEntry(string entryName, List<FatxDirectoryEntry> entries)
@@ -2887,7 +3129,163 @@ namespace Horizon
         internal class DeviceInfo
         {
             internal bool IsFat32 = false;
+            internal bool IsRemoteFtp = false;
             internal DriveInfo Fat32Drive;
+            internal FtpClient RemoteClient;
+            internal string RemoteRoot;
+            internal string RemoteIdentifier;
+            internal bool RemoteAvailable;
+            internal string RemoteError;
+
+            internal DeviceInfo(FtpClient client, string root, Action<string> statusLogger)
+            {
+                IsRemoteFtp = true;
+                RemoteClient = client;
+                RemoteRoot = root.Trim();
+                RemoteIdentifier = client.Host + "|" + RemoteRoot;
+                Name = "FTP " + RemoteRoot;
+
+                string contentPath = ResolveRemoteContentPath(RemoteRoot, statusLogger);
+                if (contentPath == null)
+                {
+                    if (RemoteError == null)
+                        RemoteError = "Content folder was not found for this root.";
+                    return;
+                }
+
+                RemoteRoot = contentPath;
+                RemoteIdentifier = client.Host + "|" + root.Trim();
+
+                RemoteAvailable = true;
+
+                foreach (FtpClient.Entry profileFolder in RemoteListDirectory(buildDirectoryPath()).Where(d => d.IsDirectory && d.Name.Length == 16))
+                {
+                    ulong profileId;
+                    if (!ulong.TryParse(profileFolder.Name, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out profileId) || profileId == 0)
+                        continue;
+
+                    string profileTypeFolder = buildDirectoryPath(profileId, dashTitleId, ContentTypes.Profile).Replace('\\', '/');
+                    List<FtpClient.Entry> profileTypeEntries = RemoteListDirectory(profileTypeFolder);
+                    FtpClient.Entry profileInfo = profileTypeEntries.Find(f => !f.IsDirectory && f.Name == profileFolder.Name);
+
+                    ProfileInfo pI = new ProfileInfo();
+                    if (profileInfo == null)
+                    {
+                        pI.Gamertag = "Unknown Profile";
+                        pI.Gamerpic = Resources.QuestionMark;
+                        pI.UnknownOrCorrupted = true;
+                    }
+                    else
+                    {
+                        try
+                        {
+                            XContentPackage package = new XContentPackage();
+                            EndianIO io = RemoteClient.DownloadFileToIO(profileInfo.FullPath);
+                            package.LoadPackage(io, false);
+                            buildProfileInfo(package, ref pI);
+                            package.CloseIO(true);
+                        }
+                        catch
+                        {
+                            pI.Gamertag = "Unknown Profile";
+                            pI.Gamerpic = Resources.QuestionMark;
+                            pI.UnknownOrCorrupted = true;
+                        }
+                        pI.RemotePath = profileInfo.FullPath;
+                        pI.RemoteSize = profileInfo.Size;
+                        pI.RemoteModified = profileInfo.Modified;
+                    }
+                    addProfileToCache(profileId, pI);
+                }
+            }
+
+            private string ResolveRemoteContentPath(string root, Action<string> statusLogger)
+            {
+                string normalizedRoot = FtpClient.NormalizePath(root);
+                List<string> candidates = new List<string>(new string[]
+                {
+                    string.Empty,
+                    normalizedRoot,
+                    FtpClient.Combine(normalizedRoot, "Content"),
+                    normalizedRoot.TrimEnd('/') + "Content",
+                    FtpClient.Combine(normalizedRoot.TrimEnd(':'), "Content"),
+                    FtpClient.Combine(normalizedRoot.TrimEnd(':') + ":", "Content")
+                });
+
+                string rootNoColon = normalizedRoot.TrimEnd(':');
+                if (rootNoColon.Length != 0)
+                {
+                    candidates.Add(rootNoColon);
+                    candidates.Add(FtpClient.Combine(rootNoColon, "Content"));
+                }
+
+                for (int i = 0; i < candidates.Count; i++)
+                {
+                    string candidate = candidates[i];
+                    string error;
+                    bool exists = RemoteClient.TryDirectoryExists(candidate, out error);
+                    if (exists)
+                    {
+                        if (candidate.EndsWith("/Content", StringComparison.OrdinalIgnoreCase))
+                            return candidate;
+
+                        List<FtpClient.Entry> entries;
+                        if (RemoteClient.TryListDirectory(candidate, out entries, out error))
+                        {
+                            FtpClient.Entry contentEntry = entries.Find(delegate(FtpClient.Entry entry)
+                            {
+                                return entry.IsDirectory && string.Equals(entry.Name.TrimEnd(':'), "Content", StringComparison.OrdinalIgnoreCase);
+                            });
+
+                            if (contentEntry != null)
+                                return contentEntry.FullPath;
+
+                            FtpClient.Entry rootEntry = entries.Find(delegate(FtpClient.Entry entry)
+                            {
+                                string entryName = entry.Name.Trim().TrimEnd(':');
+                                return entry.IsDirectory && string.Equals(entryName, rootNoColon, StringComparison.OrdinalIgnoreCase);
+                            });
+
+                            if (rootEntry != null)
+                            {
+                                string nestedContent = FtpClient.Combine(rootEntry.FullPath, "Content");
+                                if (RemoteClient.TryDirectoryExists(nestedContent, out error))
+                                    return nestedContent;
+                            }
+                        }
+                    }
+                    else if (!string.IsNullOrEmpty(error))
+                    {
+                        RemoteError = error;
+                        if (statusLogger != null)
+                            statusLogger(root + " -> " + candidate + " failed: " + error);
+                    }
+                }
+
+                List<FtpClient.Entry> rootEntries;
+                string rootListError;
+                if (RemoteClient.TryListDirectory(string.Empty, out rootEntries, out rootListError))
+                {
+                    FtpClient.Entry matchingRoot = rootEntries.Find(delegate(FtpClient.Entry entry)
+                    {
+                        string entryName = entry.Name.Trim().TrimEnd(':');
+                        return entry.IsDirectory && string.Equals(entryName, rootNoColon, StringComparison.OrdinalIgnoreCase);
+                    });
+
+                    if (matchingRoot != null)
+                    {
+                        string nestedContent = FtpClient.Combine(matchingRoot.FullPath, "Content");
+                        string error;
+                        if (RemoteClient.TryDirectoryExists(nestedContent, out error))
+                            return nestedContent;
+                        RemoteError = error;
+                    }
+                }
+                else if (!string.IsNullOrEmpty(rootListError))
+                    RemoteError = rootListError;
+
+                return null;
+            }
 
             internal DeviceInfo(FatxDeviceControl.DriveBase DriveBase)
             {
@@ -3058,6 +3456,8 @@ namespace Horizon
             {
                 get
                 {
+                    if (IsRemoteFtp)
+                        return "FTP Device";
                     if (IsFat32)
                         return "Flash Drive";
 
@@ -3075,7 +3475,7 @@ namespace Horizon
 
             internal void MountCachePartition()
             {
-                if (IsFat32)
+                if (IsFat32 || IsRemoteFtp)
                     return;
 
                 switch (Drive.DeviceType)
@@ -3094,6 +3494,26 @@ namespace Horizon
             internal FatxDeviceControl.DriveBase Drive;
             internal FatxDevice Handle, CacheHandle;
             internal Thread Worker;
+            internal List<FtpClient.Entry> RemoteListDirectory(string relativePath)
+            {
+                if (!IsRemoteFtp)
+                    return new List<FtpClient.Entry>();
+
+                string normalized = relativePath.Replace('\\', '/').TrimStart('/');
+                if (RemoteRoot.EndsWith("/Content", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (string.Equals(normalized, "Content", StringComparison.OrdinalIgnoreCase))
+                        normalized = string.Empty;
+                    else if (normalized.StartsWith("Content/", StringComparison.OrdinalIgnoreCase))
+                        normalized = normalized.Substring("Content/".Length);
+                }
+
+                string fullPath = RemoteRoot.TrimEnd('/');
+                if (normalized.Length != 0)
+                    fullPath += "/" + normalized;
+                return RemoteClient.ListDirectory(fullPath);
+            }
+
             internal bool WorkerBusy
             {
                 get
@@ -3109,6 +3529,11 @@ namespace Horizon
             {
                 if (deviceName != Name)
                 {
+                    if (IsRemoteFtp)
+                    {
+                        Name = deviceName.Length == 0 ? EmptyDeviceName : deviceName;
+                        return;
+                    }
                     bool newFile = IsFat32 ? File.Exists(Fat32Drive.Name + nameFile) : (doesEntryExist(nameFile, Handle.GetRootDirectoryEntries(), false) == null);
                     if (deviceName.Length != 0)
                     {
@@ -3141,6 +3566,8 @@ namespace Horizon
             {
                 get
                 {
+                    if (IsRemoteFtp)
+                        return Resources.Console;
                     if (IsFat32)
                         return Resources.FatxUSB_24;
                     switch (Drive.DeviceType)

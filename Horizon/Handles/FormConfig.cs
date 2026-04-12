@@ -103,11 +103,11 @@ namespace Horizon
             addForm(FormID.Forza4Profile, typeof(PackageEditors.Forza_4.Forza4Profile), "Forza Motorsport 4", FormType.Game_Modder, Resources.Forza4_Thumb_New, FormAccess.Diamond);
             addForm(FormID.Forza4Ss, typeof(PackageEditors.Forza_4.Forza4Ss), "Forza 4 Screenshot", FormType.Game_Modder, Resources.Forza4_SS_Thumb_New, FormAccess.Diamond);
             addForm(FormID.Forza4Livery, typeof(PackageEditors.Forza_4.Forza4Livery), "Forza 4 Livery Unlocker", FormType.Game_Modder, Resources.Forza4_Livery_Thumb_New, FormAccess.Diamond);
-            addForm(FormID.ForzaHorizonProfile, typeof(PackageEditors.Forza_Horizon.ForzaHorizonProfile), "Forza Horizon", FormType.Game_Modder, Resources.ForzaHorizon_Thumb_New, FormAccess.Diamond);
-            addForm(FormID.ForzaHorizonLivery, typeof(PackageEditors.Forza_Horizon.ForzaHorizonLivery), "Forza Horizon Livery", FormType.Game_Modder, Resources.ForzaHorizon_Livery_Thumb_New, FormAccess.Diamond);
-            addForm(FormID.ForzaHorizonSS, typeof(PackageEditors.Forza_Horizon.ForzaHorizonSS), "Forza Horizon Screenshot", FormType.Game_Modder, Resources.ForzaHorizon_SS_Thumb_New, FormAccess.Diamond);
+            addForm(FormID.ForzaHorizonProfile, typeof(PackageEditors.Forza_Horizon.ForzaHorizonProfile), "Forza Horizon", FormType.Game_Modder, Resources.ForzaHorizon_Thumb_New, FormAccess.Anyone);
+            addForm(FormID.ForzaHorizonLivery, typeof(PackageEditors.Forza_Horizon.ForzaHorizonLivery), "Forza Horizon Livery", FormType.Game_Modder, Resources.ForzaHorizon_Livery_Thumb_New, FormAccess.Anyone);
+            addForm(FormID.ForzaHorizonSS, typeof(PackageEditors.Forza_Horizon.ForzaHorizonSS), "Forza Horizon Screenshot", FormType.Game_Modder, Resources.ForzaHorizon_SS_Thumb_New, FormAccess.Anyone); 
             addForm(FormID.ForzaHorizon2Profile, typeof(PackageEditors.Forza_Horizon_2.ForzaHorizon2Profile), "Forza Horizon 2", FormType.Game_Modder, Resources.ForzaHorizon2_Thumb_New, FormAccess.ServerDiamond);
-            //addForm(FormID.ForzaHorizon2FnFProfile, typeof(PackageEditors.Forza_Horizon_2.ForzaHorizon2FastNFurious), "FH2: Fast & Furious", FormType.Game_Modder, Resources.ForzaHorizon2_FnF_Thumb, FormAccess.Anyone);
+            addForm(FormID.ForzaHorizon2FnFProfile, typeof(PackageEditors.Forza_Horizon_2.ForzaHorizon2FastNFurious), "FH2: Fast & Furious", FormType.Game_Modder, Resources.ForzaHorizon2_FnF_Thumb, FormAccess.Anyone);
             addForm(FormID.GearsOfWar, typeof(PackageEditors.Gears_of_War.GearsOfWar), "Gears of War", FormType.Game_Modder, Resources.GoW_Thumb_New, FormAccess.Anyone);
             addForm(FormID.GearsOfWar2, typeof(PackageEditors.Gears_of_War_2.GearsOfWar2), "Gears of War 2", FormType.Game_Modder, Resources.GoW2_Thumb_New, FormAccess.Anyone);
             addForm(FormID.GearsOfWar3, typeof(PackageEditors.Gears_of_War_3.GearsOfWar3), "Gears of War 3", FormType.Game_Modder, Resources.GoW3_Thumb_New, FormAccess.Anyone);
@@ -131,6 +131,7 @@ namespace Horizon
             addForm(FormID.NBA2K14, typeof(PackageEditors.NBA_2K14.NBA2K14), "NBA 2K14", FormType.Game_Modder, Resources.NBA_2K14Thumb, FormAccess.Anyone);
             addForm(FormID.NBA2K15, typeof(PackageEditors.NBA_2K15.NBA2K15), "NBA 2K15", FormType.Game_Modder, Resources.NBA_2K15_Thumb, FormAccess.Anyone);
             addForm(FormID.NeedForSpeedHP, typeof(PackageEditors.Need_for_Speed_HP.NeedForSpeedHP), "NFS: Hot Pursuit", FormType.Game_Modder, Resources.NeedForSpeedHP_Thumb, FormAccess.Anyone);
+            addForm(FormID.MidnightClubLA, typeof(PackageEditors.Midnight_Club_LA.MidnightClubLA), "Midnight Club: LA", FormType.Game_Modder, Resources.MCLA_Thumb, FormAccess.Anyone);
             addForm(FormID.Oblivion, typeof(PackageEditors.Oblivion.Oblivion), "Oblivion", FormType.Game_Modder, Resources.Oblivion_Thumb, FormAccess.Anyone);
             addForm(FormID.ProjectGothamRacing4, typeof(PackageEditors.Project_Gotham_Racing_4.PGR4), "PGR 4", FormType.Game_Modder, Resources.PGR4_Thumb, FormAccess.Anyone);
             addForm(FormID.PlantsvsZombies, typeof(PackageEditors.Plants_vs_Zombies.PlantsvsZombies), "Plants vs. Zombies", FormType.Game_Modder, Resources.PlantsVsZombies_Thumb, FormAccess.Anyone);
@@ -161,7 +162,7 @@ namespace Horizon
             
             // Misc
             addForm(FormID.About, null, "About", FormType.Misc, Resources.About_Thumb, FormAccess.Anyone);
-            addForm(FormID.Visit, null, "patreon.com/unknownv2", FormType.Misc, Resources.VisitUs_Thumb, FormAccess.Anyone);
+            addForm(FormID.Visit, null, "github.com/mzzvxm", FormType.Misc, Resources.VisitUs_Thumb, FormAccess.Anyone);
         }
 
         // This function is called when a form button is clicked.
@@ -172,65 +173,36 @@ namespace Horizon
                 UI.errorBox("This file is currently open in another editor!");
             else if (FatxHandle.isDeviceWorkerAvailable(bMeta.DeviceIndex))
             {
-                FormMeta fMeta = formList[bMeta.FormMetaIndex];
-                if (goodDiamondForm(fMeta.Access))
-                    reqDiamondForm(FormHandle.createNewFormConfig(bMeta.FormMetaIndex, bMeta.DeviceIndex, bMeta.FatxPath, bMeta.CachePartition));
-                else if (fMeta.Access == FormAccess.Diamond && User.isLogged)
-                    showUpgradeMessage();
-                else if (!mustBeLoggedIn(fMeta.Access))
-                    loadForm(FormHandle.createNewFormConfig(bMeta.FormMetaIndex, bMeta.DeviceIndex, bMeta.FatxPath, bMeta.CachePartition));
+                // DESBLOQUEIO TOTAL: Ignora validação VIP/Diamond/Login e carrega o editor imediatamente!
+                loadForm(FormHandle.createNewFormConfig(bMeta.FormMetaIndex, bMeta.DeviceIndex, bMeta.FatxPath, bMeta.CachePartition));
             }
         }
 
         internal static void loadNewEditor(int x, EditorControl currentForm, string newFID)
         {
             byte newIndex = getFormMetaIndex(newFID);
-            FormAccess newAccess = formList[newIndex].Access;
-            if (goodDiamondForm(formList[newIndex].Access))
-            {
-                FormHandle.Forms[x].ActiveForm = currentForm;
-                FormHandle.Forms[x].MetaIndex = newIndex;
-                reqDiamondForm(x);
-            }
-            else if (formList[newIndex].Access == FormAccess.Diamond && User.isLogged)
-                showUpgradeMessage();
-            else if (!mustBeLoggedIn(formList[newIndex].Access))
-            {
-                FormHandle.Forms[x].ActiveForm = currentForm;
-                FormHandle.Forms[x].MetaIndex = newIndex;
-                loadForm(x);
-            }
+            FormHandle.Forms[x].ActiveForm = currentForm;
+            FormHandle.Forms[x].MetaIndex = newIndex;
+
+            // DESBLOQUEIO TOTAL: Ignora verificação do servidor
+            loadForm(x);
         }
 
         private static bool goodDiamondForm(FormAccess access)
         {
-            return (access == FormAccess.Diamond || access == FormAccess.ServerDiamond) && User.isLogged && User.isDiamond;
+            // Engana o sistema para nunca tentar baixar arquivos criptografados do servidor VIP
+            return false;
         }
 
         private static bool mustBeLoggedIn(FormAccess access)
         {
-            if ((access == FormAccess.Diamond && !User.isLogged) || (access == FormAccess.User && !User.isLogged))
-            {
-                DialogResult loggedIn =  UI.messageBox("You must be logged in to use this!",
-                    "Not Logged In", MessageBoxIcon.Information, MessageBoxButtons.YesNoCancel, MessageBoxDefaultButton.Button2);
-                if (loggedIn == DialogResult.Yes)
-                {
-                    UI.messageBox("Please use the \"Login\" tab to login to your account.");
-                    Main.mainForm.tabLogin.Select();
-                    Main.mainForm.txtUsername.Select();
-                }
-                else if (loggedIn == DialogResult.No)
-                    Main.mainForm.cmdStatus_Click(null, null);
-                return true;
-            }
+            // Engana o sistema para nunca pedir a janela de Login
             return false;
         }
 
         private static void showUpgradeMessage()
         {
-            if (UI.messageBox("You must be a Diamond member to use this!\nUpgrade now?", "No Access",
-                MessageBoxIcon.Information, MessageBoxButtons.YesNoCancel, MessageBoxDefaultButton.Button1) == DialogResult.Yes)
-                System.Diagnostics.Process.Start(Config.serverURL + "diamond");
+            // Silencia a mensagem chata de "Upgrade to Diamond"
         }
 
         internal struct ButtonMeta
@@ -295,14 +267,14 @@ namespace Horizon
                     else
                         aboutBox.BringToFront();
                     break;
-                #if INT2
-                    case FormID.TitleCrawler:
-                        new TitleCrawler().Show();
-                        break;
-                    case FormID.TitleSettingsManager:
-                        new TitleSettingsManager().Show();
-                        break;
-                #endif
+#if INT2
+                case FormID.TitleCrawler:
+                    new TitleCrawler().Show();
+                    break;
+                case FormID.TitleSettingsManager:
+                    new TitleSettingsManager().Show();
+                    break;
+#endif
                 case FormID.Visit:
                     System.Diagnostics.Process.Start(Config.serverURL);
                     break;
@@ -355,29 +327,29 @@ namespace Horizon
 
         private static void addForm(string ID, Type formType, string FullName, FormType Type, Image Thumbnail, FormAccess Access)
         { addForm(ID, formType, FullName, Type, Thumbnail, Access, true); }
+
         private static void addForm(string ID, Type formType, string FullName, FormType Type, Image Thumbnail, FormAccess Access, bool UseMDI)
         {
-            if (Connection.isOnline || Access == FormAccess.Anyone || Access == FormAccess.ServerDiamond)
+            // DESBLOQUEIO DE INTERFACE: Remove a trava "Connection.isOnline".
+            // Agora todas as ferramentas VIP/Premium serão adicionadas à tela mesmo que você esteja offline!
+            formList.Add(new FormMeta
             {
-                formList.Add(new FormMeta
-                                 {
-                                     ID = ID,
-                                     ClassType = formType,
-                                     FullName = FullName,
-                                     UseMDI = UseMDI,
-                                     Type = Type,
-                                     Thumbnail = Thumbnail,
-                                     Access = Access
-                                 });
-            }
+                ID = ID,
+                ClassType = formType,
+                FullName = FullName,
+                UseMDI = UseMDI,
+                Type = Type,
+                Thumbnail = Thumbnail,
+                Access = Access
+            });
         }
 
         // Populates the tabs with all the forms in the formList.
         internal static void populateTabs()
         {
-            #if PNET
+#if PNET
             Main.mainForm.tabWIPEditors.Visible = true;
-            #endif
+#endif
             for (byte x = 0; x < formList.Count; x++)
             {
                 ButtonMeta handle = new ButtonMeta();
@@ -398,11 +370,11 @@ namespace Horizon
                 newButton.Tag = handle;
                 newButton.Click += new EventHandler(formOpenClick);
                 newRibbon.Items.Add(newButton);
-                #if PNET
+#if PNET
                 if (formList[x].FullName.Contains("* "))
                     Main.mainForm.panelWIPMods.Controls.Add(newRibbon);
                 else
-                #endif
+#endif
                     switch (formList[x].Type)
                     {
                         case FormType.Game_Modder:

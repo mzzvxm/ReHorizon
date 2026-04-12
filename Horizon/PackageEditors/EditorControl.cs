@@ -31,7 +31,7 @@ namespace Horizon.PackageEditors
         protected internal DataFile GPD;
         protected internal string TitleID;
         protected internal List<string> AlternateTitleIds;
- 
+
         private bool needsBackup = false;
         protected internal bool wasDiamondOnStart, wasSafeModeOnStart;
         private string TitleIDAsGPD { get { return TitleID + ".gpd"; } }
@@ -63,7 +63,10 @@ namespace Horizon.PackageEditors
             AllowDrop = true;
             DragEnter += new DragEventHandler(EditorControl_DragEnter);
             DragDrop += new DragEventHandler(EditorControl_DragDrop);
-            wasDiamondOnStart = Server.User.isLogged && Server.User.isDiamond;
+
+            // Enganamos a base dizendo que sempre fomos Diamond desde o início
+            wasDiamondOnStart = true;
+
             wasSafeModeOnStart = Forms.Main.mainForm.cmdSafeMode.Checked;
             enablePanels(Forms.Main.mainForm.exFatx.Expanded = false);
             Initialize();
@@ -180,11 +183,7 @@ namespace Horizon.PackageEditors
 
         private bool checkSignInStatus()
         {
-            if (wasDiamondOnStart && !Server.User.isDiamond)
-            {
-                UI.messageBox(this, StatusChanged[0], StatusChanged[1], MessageBoxIcon.Warning);
-                return false;
-            }
+            // DESBLOQUEIO DE STATUS: Impede o programa de te expulsar dizendo que seu login "caiu"
             return true;
         }
 
@@ -200,9 +199,9 @@ namespace Horizon.PackageEditors
             }
         }
 
-        #if PROD
+#if PROD
         private Thread logThread;
-        #endif
+#endif
 
         private bool DoEntry()
         {
@@ -231,7 +230,7 @@ namespace Horizon.PackageEditors
                     ProfileManager.addProfileToCache(Package, Account);
             }
             bool goodEntry = needsBackup = Entry();
-            #if PROD
+#if PROD
             if (goodEntry && Server.User.isDiamond && FormConfig.isDiamondForm(Meta.Meta.ID))
                 (logThread = new Thread((ThreadStart)delegate
                 {
@@ -257,7 +256,7 @@ namespace Horizon.PackageEditors
                     if (!req.doRequest())
                         this.Invoke((MethodInvoker)Close);
                 })).Start();
-            #endif
+#endif
             return goodEntry;
         }
 
@@ -435,10 +434,10 @@ namespace Horizon.PackageEditors
                     }
 
                     if (showMessages)
-                        UI.messageBox(this, NoGPDInProfile[0], NoGPDInProfile[1], MessageBoxIcon.Error); 
+                        UI.messageBox(this, NoGPDInProfile[0], NoGPDInProfile[1], MessageBoxIcon.Error);
                 }
                 else if (showMessages)
-                        UI.messageBox(this, InvalidProfile[0], InvalidProfile[1], MessageBoxIcon.Error);
+                    UI.messageBox(this, InvalidProfile[0], InvalidProfile[1], MessageBoxIcon.Error);
             }
             else if (Meta.Meta.Type == FormConfig.FormType.Profile_Modder)
             {
@@ -526,23 +525,23 @@ namespace Horizon.PackageEditors
                     try
                     {
 #endif
-                        Save();
-                        if (!packageOverride)
-                        {
-                            closeFileStream(!_isClosing);
-                            Package.Flush();
-                            Package.Save(true);
-                            if (Meta.IsFatx)
-                                FatxHandle.updateNode(Meta.DeviceIndex, Package, Meta.FatxPath);
-                            if (!_isClosing)
-                                UI.messageBox(this, SavedRehashedResigned[0] + (Meta.IsFatx ? " to device!" : "!"), SavedRehashedResigned[1], MessageBoxIcon.Information);
-                        }
-                        else if (!_isClosing)
-                        {
-                            if (Meta.IsFatx)
-                                FatxHandle.updateNode(Meta.DeviceIndex, Package, Meta.FatxPath);
-                            UI.messageBox(this, SavedSuccessfully[0], SavedSuccessfully[1], MessageBoxIcon.Information);
-                        }
+                    Save();
+                    if (!packageOverride)
+                    {
+                        closeFileStream(!_isClosing);
+                        Package.Flush();
+                        Package.Save(true);
+                        if (Meta.IsFatx)
+                            FatxHandle.updateNode(Meta.DeviceIndex, Package, Meta.FatxPath);
+                        if (!_isClosing)
+                            UI.messageBox(this, SavedRehashedResigned[0] + (Meta.IsFatx ? " to device!" : "!"), SavedRehashedResigned[1], MessageBoxIcon.Information);
+                    }
+                    else if (!_isClosing)
+                    {
+                        if (Meta.IsFatx)
+                            FatxHandle.updateNode(Meta.DeviceIndex, Package, Meta.FatxPath);
+                        UI.messageBox(this, SavedSuccessfully[0], SavedSuccessfully[1], MessageBoxIcon.Information);
+                    }
 #if !INT2
                     }
                     catch (FatxException ex)
@@ -705,30 +704,29 @@ namespace Horizon.PackageEditors
 
         private object Setting(byte index)
         {
-            if (!Server.User.isDiamond)
-            {
-                UI.messageBox(this, NoLongerDiamond[0], NoLongerDiamond[1], MessageBoxIcon.Exclamation);
-                this.Close();
-                return null;
-            }
+            // DESBLOQUEIO DE RECURSOS VIP/DIAMOND
+            // Ocultamos a checagem 'if (!Server.User.isDiamond)' para não dar kick no usuário.
             try
             {
+                // Tenta puxar a config se existir. Se precisar do servidor e falhar, o 'catch' salva o dia.
                 return FormSettings.getSetting(Meta.Meta.ID, (byte)((char)Server.Config.getSetting("form_xor") ^ index));
             }
             catch
             {
-                this.Close();
+                // Silenciamos o 'this.Close()' para o programa nunca mais fechar na nossa cara!
                 return null;
             }
         }
-        internal protected byte[] SettingAsByteArray(byte index) { return (byte[])Setting(index); }
-        internal protected uint[] SettingAsUIntArray(byte index) { return (uint[])Setting(index); }
-        internal protected string SettingAsString(byte index) { return (string)Setting(index); }
-        internal protected bool SettingAsBool(byte index) { return (bool)Setting(index); }
-        internal protected long SettingAsLong(byte index) { return (long)Setting(index); }
-        internal protected ulong SettingAsULong(byte index) { return (ulong)Setting(index); }
-        internal protected int SettingAsInt(byte index) { return (int)Setting(index); }
-        internal protected uint SettingAsUInt(byte index) { return (uint)((long)Setting(index)); }
+
+        // PROTEÇÃO ANTI-CRASH NAS VARIÁVEIS NULAS (Caso o servidor falhe, evita tela de erro do .NET)
+        internal protected byte[] SettingAsByteArray(byte index) { return Setting(index) as byte[]; }
+        internal protected uint[] SettingAsUIntArray(byte index) { return Setting(index) as uint[]; }
+        internal protected string SettingAsString(byte index) { return Setting(index) as string; }
+        internal protected bool SettingAsBool(byte index) { object val = Setting(index); return val == null ? false : (bool)val; }
+        internal protected long SettingAsLong(byte index) { object val = Setting(index); return val == null ? 0L : (long)val; }
+        internal protected ulong SettingAsULong(byte index) { object val = Setting(index); return val == null ? 0UL : (ulong)val; }
+        internal protected int SettingAsInt(byte index) { object val = Setting(index); return val == null ? 0 : (int)val; }
+        internal protected uint SettingAsUInt(byte index) { object val = Setting(index); return val == null ? 0U : (uint)((long)val); }
 
         internal protected bool DoesFileExist(string p) { return Package.StfsContentPackage.GetDirectoryEntryIndex(p) != -1; }
         private bool _transferringForms = false;

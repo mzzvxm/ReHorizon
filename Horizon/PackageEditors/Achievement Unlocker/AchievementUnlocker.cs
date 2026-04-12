@@ -70,11 +70,14 @@ namespace Horizon.PackageEditors.Achievement_Unlocker
             lblMetaBio.Text += rec.Read(Profile.SettingsTracker.ReadSetting(XProfileIds.XPROFILE_GAMERCARD_USER_BIO))
                 ? UnicodeEncoding.BigEndianUnicode.GetString(rec.varData) : notSet;
             lblProfileID.Text = "Profile ID: " + Package.Header.Metadata.Creator.ToString("X");
-            forAch = SettingAsString(247);
-            forGs = SettingAsString(52);
-            noDLC = SettingAsString(18);
-            secretAchievement = SettingAsString(111);
-            unlockAllDisplayed = SettingAsString(184);
+
+            // Textos desofuscados do servidor Horizon
+            forAch = "Achievements: {0}/{1} {2}";
+            forGs = "Gamerscore: {0}/{1} {2}";
+            noDLC = "(No DLC)";
+            secretAchievement = "Secret Achievement";
+            unlockAllDisplayed = "Unlock All";
+
             populateTitleRecords();
             updateProfileProgressText();
             if (TitlePlayedRecords.Count == 0)
@@ -104,14 +107,12 @@ namespace Horizon.PackageEditors.Achievement_Unlocker
         {
             isBusy = true;
             tabMain.Select();
-            tabGame.Visible
-                = tabAchievement.Visible
-                = false;
+            tabGame.Visible = tabAchievement.Visible = false;
             listAchievements.Rows.Clear();
             listGames.Items.Clear();
-            currentGame = SettingAsInt(190);
+            currentGame = 0;
             achTracker = null;
-            totalPossible = new uint[SettingAsInt(146)];
+            totalPossible = new uint[2];
             TitlePlayedRecords = new List<TitlePlayedRecord>();
             isBusy = false;
         }
@@ -122,13 +123,13 @@ namespace Horizon.PackageEditors.Achievement_Unlocker
             pProfileGamerscore.Maximum = (int)totalPossible[1];
             SettingRecord rec = new SettingRecord();
             pProfileAchievements.Value = rec.Read(Profile.SettingsTracker.ReadSetting(XProfileIds.XPROFILE_GAMERCARD_ACHIEVEMENTS_EARNED))
-                ? rec.nData : 0;
-            pProfileAchievements.Text = String.Format(forAch, pProfileAchievements.Value, pProfileAchievements.Maximum, null);
+                ? (int)rec.nData : 0;
+            pProfileAchievements.Text = String.Format(forAch, pProfileAchievements.Value, pProfileAchievements.Maximum, "");
             pProfileGamerscore.Value = rec.Read(Profile.SettingsTracker.ReadSetting(XProfileIds.XPROFILE_GAMERCARD_CRED))
-                ? rec.nData : 0;
-            pProfileGamerscore.Text = String.Format(forGs, pProfileGamerscore.Value, pProfileGamerscore.Maximum, null);
+                ? (int)rec.nData : 0;
+            pProfileGamerscore.Text = String.Format(forGs, pProfileGamerscore.Value, pProfileGamerscore.Maximum, "");
         }
-        
+
         private void updateGameProgress()
         {
             updateGameRow(currentGame);
@@ -158,7 +159,7 @@ namespace Horizon.PackageEditors.Achievement_Unlocker
                         TitlePlayedRecords.Add(tpr);
                         totalPossible[0] += tpr.AchievementsPossible;
                         totalPossible[1] += tpr.CredPossible;
-                        checkRowAdd(TitlePlayedRecords.Count + SettingAsInt(190));
+                        checkRowAdd(TitlePlayedRecords.Count - 1);
                     }
                 }
             postPopulate();
@@ -198,9 +199,9 @@ namespace Horizon.PackageEditors.Achievement_Unlocker
             isBusy = true;
             listGames.Items.Clear();
             listGames.BeginUpdate();
-            listGames.TileSize = new Size(SettingAsInt(20), SettingAsInt(9));
+            listGames.TileSize = new Size(200, 64);
             listGames.LargeImageList = new ImageList();
-            listGames.LargeImageList.ImageSize = new Size(SettingAsInt(87), SettingAsInt(87));
+            listGames.LargeImageList.ImageSize = new Size(64, 64);
             listGames.LargeImageList.ColorDepth = ColorDepth.Depth32Bit;
         }
 
@@ -222,7 +223,7 @@ namespace Horizon.PackageEditors.Achievement_Unlocker
                     dataFile.ReadRecord(new DataFileId()
                     {
                         Namespace = Namespace.IMAGES,
-                        Id = (ulong)SettingAsLong(32)
+                        Id = 0x8000
                     })));
             }
             catch { return Resources.QuestionMark; }
@@ -236,7 +237,7 @@ namespace Horizon.PackageEditors.Achievement_Unlocker
             ListViewItem Game = new ListViewItem(TitlePlayedRecords[x].TitleName, listGames.Items.Count);
             Game.SubItems[0].Tag = x;
             Game.SubItems.Add(TitlePlayedRecords[x].TitleId.ToString("X"));
-            Game.SubItems.Add(String.Format(SettingAsString(128), TitlePlayedRecords[x].CredEarned.ToString(), TitlePlayedRecords[x].CredPossible.ToString()));
+            Game.SubItems.Add(String.Format("{0}/{1}", TitlePlayedRecords[x].CredEarned.ToString(), TitlePlayedRecords[x].CredPossible.ToString()));
             return Game;
         }
 
@@ -244,12 +245,12 @@ namespace Horizon.PackageEditors.Achievement_Unlocker
         {
             for (int i = 0; i < listGames.Items.Count; i++)
                 if ((int)listGames.Items[i].SubItems[0].Tag == x)
-                    listGames.Items[i].SubItems[2].Text = String.Format(SettingAsString(128), TitlePlayedRecords[x].CredEarned.ToString(), TitlePlayedRecords[x].CredPossible.ToString());
+                    listGames.Items[i].SubItems[2].Text = String.Format("{0}/{1}", TitlePlayedRecords[x].CredEarned.ToString(), TitlePlayedRecords[x].CredPossible.ToString());
         }
 
         public override void Initialize()
         {
-            int shiftBy = SettingAsInt(124);
+            int shiftBy = 0;
             if (Program.glassEnabled)
             {
                 listGames.Location = new Point(listGames.Location.X - shiftBy, listGames.Location.Y - 1);
@@ -320,7 +321,6 @@ namespace Horizon.PackageEditors.Achievement_Unlocker
                     tabGame.Select();
                 rbPackageEditor.Refresh();
             }
-            //listAchievements.Sort(listAchievements.Columns[1], ListSortDirection.Ascending);
         }
 
         private Image getAchievementTile(int x)
@@ -334,22 +334,27 @@ namespace Horizon.PackageEditors.Achievement_Unlocker
         {
             DataGridViewRow Ach = new DataGridViewRow();
             Ach.CreateCells(listAchievements);
-            Ach.Height = SettingAsInt(9);
+            Ach.Height = 64;
             Ach.Tag = x;
             Ach.Cells[0].Value = getAchievementTile(x);
+
+            string status = achTracker.Achievements[x].AchievementEarned
+                            ? ("Unlocked " + (achTracker.Achievements[x].AchievementEarnedOnline ? "(Online)" : "(Offline)"))
+                            : "Locked";
+
             Ach.Cells[1].Value = achTracker.Achievements[x].Label.Replace(Environment.NewLine, String.Empty)
                 + Environment.NewLine
-                + (achTracker.Achievements[x].AchievementEarned ? (SettingAsString(118) + (achTracker.Achievements[x].AchievementEarnedOnline
-                    ? SettingAsString(227) : SettingAsString(21))) : SettingAsString(135))
+                + status
                 + Environment.NewLine
-                + achTracker.Achievements[x].cred.ToString() + SettingAsString(54);
+                + achTracker.Achievements[x].cred.ToString() + " G";
+
             if (achTracker.Achievements[x].AchievementEarned)
                 Ach.Cells[2].Value = achTracker.Achievements[x].Description;
             else
                 if (achTracker.Achievements[x].AchievementShowUnachieved)
-                    Ach.Cells[2].Value = achTracker.Achievements[x].Unachieved;
-                else
-                    Ach.Cells[2].Value = secretAchievement;
+                Ach.Cells[2].Value = achTracker.Achievements[x].Unachieved;
+            else
+                Ach.Cells[2].Value = secretAchievement;
             Ach.Cells[2].Value = ((string)Ach.Cells[2].Value).Replace(Environment.NewLine, " ");
             return Ach;
         }
@@ -361,7 +366,7 @@ namespace Horizon.PackageEditors.Achievement_Unlocker
             {
                 if (listAchievements.SelectedRows.Count > 1)
                 {
-                    cmdUnlockAll.Text = SettingAsString(84);
+                    cmdUnlockAll.Text = "Unlock All Selected";
                     tabGame.Select();
                 }
                 else
@@ -487,7 +492,7 @@ namespace Horizon.PackageEditors.Achievement_Unlocker
         }
         private void updateLastPlayed(DateTime lastPlayed, long asLong)
         {
-            lblLastPlayed.Text = "<b>Last Played:</b> " + (asLong == 0 ? SettingAsString(15) : lastPlayed.ToString());
+            lblLastPlayed.Text = "<b>Last Played:</b> " + (asLong == 0 ? "Never" : lastPlayed.ToString());
         }
 
         private void pbProfile_Mouse(object sender, EventArgs e)
@@ -514,8 +519,8 @@ namespace Horizon.PackageEditors.Achievement_Unlocker
         {
             if (cmdUnlockAllAchievements.Text.Length == cancel.Length)
                 cancelUnlock = true;
-            else if (TitlePlayedRecords.Count > 0 && UI.messageBox(this, SettingAsString(200),
-                SettingAsString(99), MessageBoxIcon.Question, MessageBoxButtons.YesNoCancel, MessageBoxDefaultButton.Button3) == DialogResult.Yes)
+            else if (TitlePlayedRecords.Count > 0 && UI.messageBox(this, "This operation may take a while depending on how many achievements you have. Are you sure you want to unlock all achievements?",
+                "Unlock All", MessageBoxIcon.Question, MessageBoxButtons.YesNoCancel, MessageBoxDefaultButton.Button3) == DialogResult.Yes)
             {
                 if (Meta.IsFatx && FormHandle.isDeviceWorkerThreadRunning(Meta.DeviceIndex))
                 {
@@ -554,7 +559,7 @@ namespace Horizon.PackageEditors.Achievement_Unlocker
                             loadAchievementRow(x);
                         loadAchievementRow(0);
                         if (!errorThrown && !cancelUnlock)
-                            UI.messageBox(this, SettingAsString(62), SettingAsString(94), MessageBoxIcon.Information);
+                            UI.messageBox(this, "All achievements unlocked successfully!", "Success", MessageBoxIcon.Information);
                         cancelUnlock = false;
                         cmdUnlockAllAchievements.Text = "Unlock Everything";
                         enableControls(true);

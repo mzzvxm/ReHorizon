@@ -14,7 +14,7 @@ namespace FarCry
 
         internal FarCry4Save(EndianIO io)
         {
-            if(io == null)
+            if (io == null)
                 throw new FarCry4Exception("invalid save stream detected!");
 
             _saveFile = io;
@@ -46,7 +46,7 @@ namespace FarCry
             io.In.ReadInt32();
 
             io.In.BaseStream.Position += 1;
-            
+
             _saveDataPosition = io.Position;
 
             //int retLen = LZO.LZO1X.Decompress(io.In.ReadBytes(io.Length - io.Position), ms);
@@ -65,9 +65,10 @@ namespace FarCry
             _saveFile.Stream.SetLength(_saveDataPosition + _io.Length);
         }
 
-        internal byte[] Export()
+        internal EndianIO Export()
         {
-            return null;
+            // Retorna o IO interno descomprimido para que o chamador possa salvá-lo
+            return _io;
         }
         private void ReadSave()
         {

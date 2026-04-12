@@ -117,17 +117,17 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <metadata name="clmnCarList.UserAddedColumn" type="System.Boolean, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
-    <value>True</value>
+  <metadata name="rbPackageEditor.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>17, 17</value>
   </metadata>
-  <metadata name="Column7.UserAddedColumn" type="System.Boolean, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
-    <value>True</value>
+  <metadata name="panelMain.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>349, 54</value>
   </metadata>
-  <metadata name="Column8.UserAddedColumn" type="System.Boolean, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
-    <value>True</value>
+  <metadata name="advPropertyTree.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>209, 54</value>
   </metadata>
   <metadata name="advClmnProperty.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
-    <value>510, 17</value>
+    <value>718, 54</value>
   </metadata>
   <assembly alias="System.Drawing" name="System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
   <data name="advClmnProperty.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
@@ -177,23 +177,68 @@
         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
-        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
+        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
+        ALOVdrsu+Ie/TdsqAOj4/SkAAAAASUVORK5CYII=
 </value>
   </data>
   <metadata name="advClmnValue.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
-    <value>648, 17</value>
+    <value>865, 54</value>
+  </metadata>
+  <metadata name="panelEx2.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>109, 54</value>
+  </metadata>
+  <metadata name="labelX4.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>17, 54</value>
+  </metadata>
+  <metadata name="panelEx1.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>459, 54</value>
+  </metadata>
+  <metadata name="cmbLevel.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>898, 17</value>
+  </metadata>
+  <metadata name="labelX2.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>657, 17</value>
+  </metadata>
+  <metadata name="labelX1.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>565, 17</value>
+  </metadata>
+  <metadata name="labelX3.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>473, 17</value>
+  </metadata>
+  <metadata name="ribbonPanel1.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>349, 17</value>
+  </metadata>
+  <metadata name="panelEx3.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>249, 17</value>
+  </metadata>
+  <metadata name="labelX5.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>157, 17</value>
+  </metadata>
+  <metadata name="btnAddSecretCars.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>749, 17</value>
+  </metadata>
+  <metadata name="btnAddUnicornCars.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>559, 54</value>
+  </metadata>
+  <metadata name="clmnCarList.UserAddedColumn" type="System.Boolean, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
+    <value>True</value>
+  </metadata>
+  <metadata name="Column7.UserAddedColumn" type="System.Boolean, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
+    <value>True</value>
+  </metadata>
+  <metadata name="Column8.UserAddedColumn" type="System.Boolean, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
+    <value>True</value>
   </metadata>
 </root>

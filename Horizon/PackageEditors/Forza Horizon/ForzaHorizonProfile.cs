@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Net;
 using System.Text;
 using DevComponents.AdvTree;
@@ -13,6 +14,14 @@ namespace Horizon.PackageEditors.Forza_Horizon
 {
     public partial class ForzaHorizonProfile : EditorControl
     {
+        private static readonly byte[] FallbackProfileAesKey = Encoding.ASCII.GetBytes(" unable to conne");
+        private static readonly byte[][] FallbackProfileHmacKeys =
+        {
+            Encoding.ASCII.GetBytes("Due to conflicting NAT settings,"),
+            Encoding.ASCII.GetBytes(" unable to connect to the other "),
+            Encoding.ASCII.GetBytes("player's console at this time.\0D")
+        };
+
         //public static readonly string FID = "4D5309C9";
 
         private ForzaHorizon.ForzaHorizonProfile _forzaProfile;
@@ -22,7 +31,7 @@ namespace Horizon.PackageEditors.Forza_Horizon
         private ForzaGarage _garage;
 
         private int[] _unicornCarIds, _secretCarIds;
-        private List<int> _carIds; 
+        private List<int> _carIds;
         private string[] _unicornCarListing, _secretCarListing;
         private List<ForzaGarage.ForzaGarageCar> _carList;
         private Dictionary<string, int> _carIdList;
@@ -43,19 +52,45 @@ namespace Horizon.PackageEditors.Forza_Horizon
             if (!OpenStfsFile("ForzaProfile"))
                 return false;
 
-            if(_forzaKeyStack == null)
-                _forzaKeyStack = new[] { Encoding.ASCII.GetBytes(SettingAsString(118)), Encoding.ASCII.GetBytes(SettingAsString(183)), SettingAsByteArray(189)  };
+            byte[] profileAesKey = ResolveAsciiSetting(131, FallbackProfileAesKey);
+            byte[] key118 = ResolveAsciiSetting(118, FallbackProfileHmacKeys[0]);
+            byte[] key183 = ResolveAsciiSetting(183, FallbackProfileHmacKeys[1]);
+            byte[] key189 = SettingAsByteArray(189) ?? FallbackProfileHmacKeys[2];
+
+            if (_forzaKeyStack == null)
+            {
+                _forzaKeyStack = new[]
+                {
+                    key118,
+                    key183,
+                    key189
+                };
+            }
+
             _carbinKey = SettingAsByteArray(105);
 
-            _forzaProfile = new ForzaHorizon.ForzaHorizonProfile(IO, Package.Header.Metadata.Creator,
-                Encoding.ASCII.GetBytes(SettingAsString(131)), _forzaKeyStack, 
-                new EndianReader(Package.StfsContentPackage.GetFileStream("VersionFlags"), EndianType.BigEndian).SeekNReadInt32(0x8));
+            _forzaProfile = new ForzaHorizon.ForzaHorizonProfile(
+                IO,
+                Package.Header.Metadata.Creator,
+                profileAesKey,
+                _forzaKeyStack,
+                new EndianReader(Package.StfsContentPackage.GetFileStream("VersionFlags"), EndianType.BigEndian).SeekNReadInt32(0x8)
+            );
 
-            _playerDatabaseIO = Package.StfsContentPackage.GetEndianIO("PlayerDatabase");
-            _garage = new ForzaGarage(_playerDatabaseIO,SettingAsByteArray(107), SettingAsByteArray(210), Package.Header.Metadata.Creator, _forzaDatabase, ForzaVersion.ForzaHorizon);
+            byte[] garageAesKey = SettingAsByteArray(107);
+            byte[] garageHmacKey = SettingAsByteArray(210);
+            if (garageAesKey != null && garageHmacKey != null)
+            {
+                _playerDatabaseIO = Package.StfsContentPackage.GetEndianIO("PlayerDatabase");
+                _garage = new ForzaGarage(_playerDatabaseIO, garageAesKey, garageHmacKey, Package.Header.Metadata.Creator, _forzaDatabase, ForzaVersion.ForzaHorizon);
 
-            InitializeGarageInfo();
-            ParseGarageInformation();
+                InitializeGarageInfo();
+                ParseGarageInformation();
+            }
+            else
+            {
+                ribbonTabItem1.Visible = false;
+            }
 
             if (!LoadSaveData())
                 return false;
@@ -67,10 +102,13 @@ namespace Horizon.PackageEditors.Forza_Horizon
 
         public override void Save()
         {
-            SaveGarageInformation();
+            if (_garage != null)
+            {
+                SaveGarageInformation();
 
-            // flush player database edits
-            _garage.Save(false);
+                // flush player database edits
+                _garage.Save(false);
+            }
 
             UpdateNode("Main;Credits", numCredits.Value.ToString());
             UpdateNode("Main;XP", numXP.Value.ToString());
@@ -79,6 +117,24 @@ namespace Horizon.PackageEditors.Forza_Horizon
             WriteTreeSettings();
 
             _forzaProfile.Save();
+        }
+
+        private static byte[] ResolveAsciiSetting(byte settingIndex, byte[] fallback)
+        {
+            try
+            {
+                object rawSetting = FormSettings.getSetting(FormID.ForzaHorizonProfile, settingIndex);
+                string stringSetting = rawSetting as string;
+                if (!string.IsNullOrEmpty(stringSetting))
+                    return Encoding.ASCII.GetBytes(stringSetting);
+
+                byte[] byteSetting = rawSetting as byte[];
+                return byteSetting ?? fallback;
+            }
+            catch
+            {
+                return fallback;
+            }
         }
 
         private void InitSaveData()
@@ -143,7 +199,7 @@ namespace Horizon.PackageEditors.Forza_Horizon
             advPropertyTree.Nodes.Clear();
             advPropertyTree.BeginUpdate();
 
-            for (int i = 0; i < _forzaProfile.Profile.ProfileSchemaEntries.Count; )
+            for (int i = 0; i < _forzaProfile.Profile.ProfileSchemaEntries.Count;)
             {
                 string parent = _forzaProfile.Profile.ProfileSchemaEntries[i].Name;
                 if (_forzaProfile.Profile.ProfileSchemaEntries[i].Type == ForzaTypes.PropertyBag)
@@ -164,29 +220,64 @@ namespace Horizon.PackageEditors.Forza_Horizon
         }
         private void WriteTreeSettings()
         {
-            foreach (Node PropertyBagNode in this.advPropertyTree.Nodes)
+            var errors = new List<string>();
+            foreach (Node propertyBagNode in this.advPropertyTree.Nodes)
             {
-                this.WriteProperty(PropertyBagNode);
+                WriteProperty(propertyBagNode, errors);
+            }
+            if (errors.Count > 0)
+            {
+                Functions.UI.messageBox(
+                    string.Format("Aviso: {0} propriedade(s) ignorada(s) por valor invalido:\n{1}",
+                        errors.Count, string.Join("\n", errors.ToArray())),
+                    "Forza Horizon Profile",
+                    MessageBoxIcon.Warning);
             }
         }
-        private void WriteProperty(Node propertyBagNode)
+        private void WriteProperty(Node propertyBagNode, List<string> errors)
         {
             foreach (Node propertyNode in propertyBagNode.Nodes)
             {
-                var property = _forzaProfile.Profile.GetEntry(propertyNode.Name.Split(';')[1]);
-                _forzaProfile.SaveIO.SeekTo(property.Address);
-                WritePropertyValue(_forzaProfile.SaveIO.Out, property.Type, propertyNode.Cells[1].Text);
+                try
+                {
+                    string[] nameParts = propertyNode.Name.Split(';');
+                    if (nameParts.Length < 2)
+                        continue;
+
+                    // Guard: node must have a value cell
+                    if (propertyNode.Cells == null || propertyNode.Cells.Count < 2)
+                        continue;
+
+                    string cellValue = propertyNode.Cells[1].Text;
+                    if (cellValue == null)
+                        continue;
+
+                    var property = _forzaProfile.Profile.GetEntry(nameParts[1]);
+                    // Note: ForzaProfileEntry is a struct - cannot be null.
+                    // If GetEntry throws for an unknown property, the outer catch handles it.
+
+                    _forzaProfile.SaveIO.SeekTo(property.Address);
+                    WritePropertyValue(_forzaProfile.SaveIO.Out, property.Type, cellValue);
+                }
+                catch (Exception ex)
+                {
+                    errors.Add(string.Format("  {0}: {1}", propertyNode.Name, ex.Message));
+                }
             }
         }
         private void UpdateNode(string nodeName, string value)
         {
-            if (this.advPropertyTree.Nodes.Count > 0)
-            {
-                var node = this.advPropertyTree.Nodes.Find(nodeName, true)[0];
-                node.BeginEdit();
-                node.Cells[1].Text = value.ToString();
-                node.EndEdit(false);
-            }
+            if (this.advPropertyTree.Nodes.Count == 0)
+                return;
+            var found = this.advPropertyTree.Nodes.Find(nodeName, true);
+            if (found == null || found.Length == 0)
+                return;
+            var node = found[0];
+            if (node.Cells == null || node.Cells.Count < 2)
+                return;
+            node.BeginEdit();
+            node.Cells[1].Text = value;
+            node.EndEdit(false);
         }
         private static string FormatSettingValue(ForzaProfileEntry entry)
         {
@@ -194,46 +285,142 @@ namespace Horizon.PackageEditors.Forza_Horizon
             {
                 case ForzaTypes.CarId:
                 case ForzaTypes.UInt32:
-                    return BitConverter.ToUInt32(Horizon.Functions.Global.convertToBigEndian(entry.Value), 0).ToString();
+                    return BitConverter.ToUInt32(Horizon.Functions.Global.convertToBigEndian(entry.Value), 0).ToString(CultureInfo.InvariantCulture);
                 case ForzaTypes.Bool:
                     return BitConverter.ToBoolean(Horizon.Functions.Global.convertToBigEndian(entry.Value), 0).ToString();
                 case ForzaTypes.Uint16:
-                    return BitConverter.ToUInt16(Horizon.Functions.Global.convertToBigEndian(entry.Value), 0).ToString();
+                    return BitConverter.ToUInt16(Horizon.Functions.Global.convertToBigEndian(entry.Value), 0).ToString(CultureInfo.InvariantCulture);
                 case ForzaTypes.UInt8:
-                    return entry.Value[0].ToString();
+                    return entry.Value[0].ToString(CultureInfo.InvariantCulture);
                 case ForzaTypes.Float32:
-                    return BitConverter.ToSingle(Horizon.Functions.Global.convertToBigEndian(entry.Value), 0).ToString();
+                    // IMPORTANT: always use InvariantCulture so "." is used as decimal separator,
+                    // not "," which is the default in pt-BR and many other locales.
+                    return BitConverter.ToSingle(Horizon.Functions.Global.convertToBigEndian(entry.Value), 0).ToString("R", CultureInfo.InvariantCulture);
                 case ForzaTypes.UInt64:
-                    return BitConverter.ToUInt64(Horizon.Functions.Global.convertToBigEndian(entry.Value), 0).ToString();
+                    return BitConverter.ToUInt64(Horizon.Functions.Global.convertToBigEndian(entry.Value), 0).ToString(CultureInfo.InvariantCulture);
                 default:
                     throw new ForzaException(string.Format("could not format property type {0:D}", entry.Type));
             }
         }
         private static void WritePropertyValue(EndianWriter writer, ForzaTypes type, string value)
         {
+            if (value == null || value.Trim().Length == 0)
+                return;
+
             switch (type)
             {
                 case ForzaTypes.CarId:
                 case ForzaTypes.UInt32:
-                    writer.Write(uint.Parse(value));
-                    break;
+                    {
+                        // Primary: parse as uint (handles 0 – 4294967295)
+                        uint u32;
+                        if (uint.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out u32))
+                        {
+                            writer.Write(u32);
+                            break;
+                        }
+                        // Fallback: parse as signed int and reinterpret bits (handles -1, -2, …)
+                        // This is intentional: some Forza fields store bit-patterns that look negative
+                        // as signed int32 but are valid uint32 when the bits are kept intact.
+                        int i32;
+                        if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out i32))
+                        {
+                            writer.Write(unchecked((uint)i32));
+                            break;
+                        }
+                        throw new ForzaException(string.Format("Valor UInt32 invalido: '{0}'", value));
+                    }
+
                 case ForzaTypes.Bool:
-                    writer.Write(bool.Parse(value));
-                    break;
+                    {
+                        bool b;
+                        if (bool.TryParse(value, out b))
+                        {
+                            writer.Write(b);
+                            break;
+                        }
+                        // Accept 0 / 1 as well
+                        int bInt;
+                        if (int.TryParse(value, out bInt))
+                        {
+                            writer.Write(bInt != 0);
+                            break;
+                        }
+                        throw new ForzaException(string.Format("Valor Bool invalido: '{0}'", value));
+                    }
+
                 case ForzaTypes.Uint16:
-                    writer.Write(ushort.Parse(value));
-                    break;
+                    {
+                        ushort u16;
+                        if (ushort.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out u16))
+                        {
+                            writer.Write(u16);
+                            break;
+                        }
+                        short s16;
+                        if (short.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out s16))
+                        {
+                            writer.Write(unchecked((ushort)s16));
+                            break;
+                        }
+                        throw new ForzaException(string.Format("Valor UInt16 invalido: '{0}'", value));
+                    }
+
                 case ForzaTypes.UInt8:
-                    writer.Write(byte.Parse(value));
-                    break;
+                    {
+                        byte b8;
+                        if (byte.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out b8))
+                        {
+                            writer.Write(b8);
+                            break;
+                        }
+                        sbyte sb8;
+                        if (sbyte.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out sb8))
+                        {
+                            writer.Write(unchecked((byte)sb8));
+                            break;
+                        }
+                        throw new ForzaException(string.Format("Valor UInt8 invalido: '{0}'", value));
+                    }
+
                 case ForzaTypes.Float32:
-                    writer.Write(float.Parse(value));
-                    break;
+                    {
+                        // IMPORTANT: use InvariantCulture so "." is the decimal separator
+                        // regardless of the system locale (e.g. pt-BR uses ",").
+                        float f32;
+                        if (float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out f32))
+                        {
+                            writer.Write(f32);
+                            break;
+                        }
+                        // Try current culture as last resort (in case the user typed "1,5" manually)
+                        if (float.TryParse(value, NumberStyles.Float, CultureInfo.CurrentCulture, out f32))
+                        {
+                            writer.Write(f32);
+                            break;
+                        }
+                        throw new ForzaException(string.Format("Valor Float32 invalido: '{0}'", value));
+                    }
+
                 case ForzaTypes.UInt64:
-                    writer.Write(ulong.Parse(value));
-                    break;
+                    {
+                        ulong u64;
+                        if (ulong.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out u64))
+                        {
+                            writer.Write(u64);
+                            break;
+                        }
+                        long s64;
+                        if (long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out s64))
+                        {
+                            writer.Write(unchecked((ulong)s64));
+                            break;
+                        }
+                        throw new ForzaException(string.Format("Valor UInt64 invalido: '{0}'", value));
+                    }
+
                 default:
-                    throw new ForzaException(string.Format("could not parse property type {0:D}", type));
+                    throw new ForzaException(string.Format("Tipo de propriedade desconhecido: {0:D}", type));
             }
         }
         private static void AddSetting(string setting, string value, AdvTree tree)
@@ -288,7 +475,18 @@ namespace Horizon.PackageEditors.Forza_Horizon
             if (sfd.ShowDialog() != DialogResult.OK)
                 return;
 
-            _garage.Extract().Save(sfd.FileName);
+            if (_garage == null)
+            {
+                Functions.UI.messageBox("Garage nao foi carregada.", "Forza Horizon", MessageBoxIcon.Warning);
+                return;
+            }
+            var extracted = _garage.Extract();
+            if (extracted == null)
+            {
+                Functions.UI.messageBox("Extract retornou vazio.", "Forza Horizon", MessageBoxIcon.Warning);
+                return;
+            }
+            extracted.Save(sfd.FileName);
         }
         [Conditional("INT2")]
         private void BtnClickDumpCarbins(object sender, EventArgs e)
@@ -304,12 +502,12 @@ namespace Horizon.PackageEditors.Forza_Horizon
                                          "1969 Ferrari 246 Dino GT",
                                          "2009 Ford Fiesta",
                                          "1991 Honda CR-X Si",
-                                         "1971 Lotus Elan Sprint", 
+                                         "1971 Lotus Elan Sprint",
                                          "2010 Mazda MX-5 Miata Superlight",
                                          "2012 Mini Coupe JCW",
                                          "2010 Saleen S5S Raptor"
                                      };
-            _unicornCarIds = new []
+            _unicornCarIds = new[]
                                  {
                                      326,
                                      1082,
@@ -335,7 +533,7 @@ namespace Horizon.PackageEditors.Forza_Horizon
                                         "2001 GMC Yukon XL",
                                         "2012 Kenworth T440",
                                         "2011 Nissan Leaf",
-                                        "2011 Toyota Prius", 
+                                        "2011 Toyota Prius",
                                         "1995 Toyota Corolla DX",
                                         "2007 Toyota Camry",
                                         "2004 Toytota RAV4 Sport",
@@ -343,7 +541,7 @@ namespace Horizon.PackageEditors.Forza_Horizon
                                         "1995 Volkswagen Corrado VR6",
                                         "2012 Volvo XC70",
                                     };
-            _secretCarIds = new []
+            _secretCarIds = new[]
                                 {
                                     1531,
                                     1215,
@@ -397,12 +595,28 @@ namespace Horizon.PackageEditors.Forza_Horizon
                 clmnCarList.Items.AddRange(_secretCarListing);
             }
 
-            _garageSchema = Encoding.ASCII.GetString(new WebClient().DownloadData(
-                string.Format("{0}/forza_horizon/garage/{1}", Config.baseURL, "Garage_Schema.txt")));
-            // for storing the temporarily downloaded car data
-            if(_carBins == null)
+            // Bug Fix 1: Download da schema com tratamento de falha de rede.
+            // Se falhar, _garageSchema fica null e SaveGarageInformation vai verificar antes de usar.
+            if (_garageSchema == null)
+            {
+                try
+                {
+                    _garageSchema = Encoding.ASCII.GetString(new WebClient().DownloadData(
+                        string.Format("{0}/forza_horizon/garage/{1}", Config.baseURL, "Garage_Schema.txt")));
+                }
+                catch (Exception ex)
+                {
+                    _garageSchema = null;
+                    Functions.UI.messageBox(
+                        string.Format("Nao foi possivel baixar o schema da garage:\n{0}\n\nAdicionar carros pode nao funcionar.", ex.Message),
+                        "Forza Horizon Garage", MessageBoxIcon.Warning);
+                }
+            }
+
+            // Bug Fix 2: inicializar caches estaticos uma única vez
+            if (_carBins == null)
                 _carBins = new Dictionary<int, byte[]>();
-            if(_carThumbs == null)
+            if (_carThumbs == null)
                 _carThumbs = new Dictionary<int, byte[]>();
         }
 
@@ -433,15 +647,37 @@ namespace Horizon.PackageEditors.Forza_Horizon
             // make sure any rows being edited are saved
             dgvCarGarage.EndEdit();
 
+            // Bug Fix 3: verificar se o schema esta disponivel antes de tentar usar
+            if (_garageSchema == null)
+            {
+                Functions.UI.messageBox(
+                    "Schema da garage nao esta disponivel (falha de rede anterior). As alteracoes de carros nao serao salvas.",
+                    "Forza Horizon Garage", MessageBoxIcon.Warning);
+                return;
+            }
+
             foreach (var garageCar in _carList)
             {
                 if (!garageCar.IsModified) continue;
-                if(!_carBins.ContainsKey(garageCar.CarId))
+
+                // Bug Fix 4: tratar falha de download dos carbins individualmente
+                if (!_carBins.ContainsKey(garageCar.CarId))
                 {
-                    _carBins.Add(garageCar.CarId,
-                                 new WebClient().DownloadData(string.Format("{0}/forza_horizon/garage/Car_{1}.bin",
-                                                                            Config.baseURL,
-                                                                            garageCar.CarId)));
+                    try
+                    {
+                        _carBins.Add(garageCar.CarId,
+                                     new WebClient().DownloadData(string.Format("{0}/forza_horizon/garage/Car_{1}.bin",
+                                                                                Config.baseURL,
+                                                                                garageCar.CarId)));
+                    }
+                    catch (Exception ex)
+                    {
+                        Functions.UI.messageBox(
+                            string.Format("Nao foi possivel baixar dados do carro ID {0}:\n{1}\n\nEsse carro sera ignorado.",
+                                garageCar.CarId, ex.Message),
+                            "Forza Horizon Garage", MessageBoxIcon.Warning);
+                        continue;
+                    }
                 }
                 garageCar.CarReader = new ForzaCarbinReader(_garageSchema, new EndianReader(_carBins[garageCar.CarId], EndianType.BigEndian), _carbinKey);
             }
@@ -460,10 +696,23 @@ namespace Horizon.PackageEditors.Forza_Horizon
             {
                 if (!_carThumbs.ContainsKey(car.CarId))
                 {
-                    _carThumbs.Add(car.CarId, 
-                        new WebClient().DownloadData(string.Format("{0}/forza_horizon/garage/Thumbnails/{1}", Config.baseURL, _carThumbNameList[car.CarId])));
+                    // Bug Fix 5: tratar falha de download de thumbnails individualmente
+                    try
+                    {
+                        _carThumbs.Add(car.CarId,
+                            new WebClient().DownloadData(string.Format("{0}/forza_horizon/garage/Thumbnails/{1}",
+                                Config.baseURL, _carThumbNameList[car.CarId])));
+                    }
+                    catch
+                    {
+                        // Thumbnail nao encontrada — continua sem ela; nao e' critico
+                        _carThumbs.Add(car.CarId, new byte[0]);
+                    }
                 }
-                Package.StfsContentPackage.CreateFileFromArray(car.ThumbnailPath, _carThumbs[car.CarId]);
+
+                // Nao tenta criar arquivo de thumbnail vazio no pacote
+                if (_carThumbs[car.CarId].Length > 0)
+                    Package.StfsContentPackage.CreateFileFromArray(car.ThumbnailPath, _carThumbs[car.CarId]);
             }
         }
 
@@ -481,6 +730,10 @@ namespace Horizon.PackageEditors.Forza_Horizon
         {
             foreach (var carId in carIdList)
             {
+                // Bug Fix 6: nao adicionar duplicatas — verifica se o carro já está na lista
+                if (_carList.Exists(c => c.CarId == carId))
+                    continue;
+
                 var newCar = new ForzaGarage.ForzaGarageCar
                 {
                     CarId = carId,
@@ -503,7 +756,12 @@ namespace Horizon.PackageEditors.Forza_Horizon
 
         private void DgvEndCarPropertyEdit(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex == _carList.Count)
+            // Bug Fix 7: verificacoes de bounds e de tipos invalidos
+            if (e.RowIndex < 0)
+                return;
+
+            // Se o usuario editou uma linha nova alem da lista atual, expande a lista
+            while (_carList.Count <= e.RowIndex)
                 _carList.Add(new ForzaGarage.ForzaGarageCar());
 
             var carRow = dgvCarGarage.Rows[e.RowIndex];
@@ -511,7 +769,12 @@ namespace Horizon.PackageEditors.Forza_Horizon
             {
                 case 0x00:
                     if (carRow.Cells[0].Value != null)
-                        _carList[e.RowIndex].CarId = _carIdList[Convert.ToString(carRow.Cells[0].Value)];
+                    {
+                        string selectedName = Convert.ToString(carRow.Cells[0].Value);
+                        if (_carIdList.ContainsKey(selectedName))
+                            _carList[e.RowIndex].CarId = _carIdList[selectedName];
+                        // se o nome nao for reconhecido, mantem o ID anterior
+                    }
                     break;
                 case 0x01:
                     if (carRow.Cells[1].Value != null)
@@ -519,10 +782,15 @@ namespace Horizon.PackageEditors.Forza_Horizon
                     break;
                 case 0x02:
                     if (carRow.Cells[2].Value != null)
-                        _carList[e.RowIndex].NumberOfOwners = Convert.ToInt32(carRow.Cells[2].Value);
+                    {
+                        int owners;
+                        if (int.TryParse(Convert.ToString(carRow.Cells[2].Value), out owners))
+                            _carList[e.RowIndex].NumberOfOwners = owners;
+                        // se nao for numero valido, mantem o valor anterior
+                    }
                     break;
             }
-            _carList[e.RowIndex].IsModified = true;     
+            _carList[e.RowIndex].IsModified = true;
         }
     }
 }

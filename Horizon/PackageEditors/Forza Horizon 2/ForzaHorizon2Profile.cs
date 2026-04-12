@@ -518,15 +518,63 @@ namespace Horizon.PackageEditors.Forza_Horizon_2
         //[Conditional("INT2")]
         private void BtnClickDumpCarbins(object sender, EventArgs e)
         {
-            var writer = new ForzaCarbinWriter(_forzaDatabase.RetrieveTableData("Career_Garage"), _carbinKey);
-            writer.ExportToDirectory(@"G:\Projects\Forza\Forza Horizon 2\Saves\Garage");
-            return;
-            var reader = _forzaDatabase.RetrieveTableData("Career_Garage").CreateDataReader();
-            while(reader.Read())
+            // Previne o NullReferenceException caso o banco de dados não esteja carregado
+            if (_forzaDatabase == null)
             {
-                string filePath = Convert.ToString(reader["Thumbnail"]).Remove(0, 18);
-                Package.StfsContentPackage.ExtractFileToArray(filePath).Save(string.Format(@"G:\Projects\Forza\Forza Horizon 2\Saves\Garage\Thumbnails\Thumbnail_{0}.xdc",
-                    Convert.ToInt32(reader["CarId"])));
+                Horizon.Functions.UI.messageBox("The Forza Database is not loaded or initialized.\n\nO banco de dados do Forza não foi carregado ou inicializado.", "Database Error", MessageBoxIcon.Error);
+                return;
+            }
+
+            try
+            {
+                var tableData = _forzaDatabase.RetrieveTableData("Career_Garage");
+                if (tableData == null)
+                {
+                    Horizon.Functions.UI.messageBox("Could not retrieve 'Career_Garage' table. It might be missing or corrupt.\n\nNão foi possível ler a tabela 'Career_Garage'.", "Table Error", MessageBoxIcon.Error);
+                    return;
+                }
+
+                // Abre uma janela de diálogo em vez de forçar um diretório G:\ do desenvolvedor original
+                using (FolderBrowserDialog fbd = new FolderBrowserDialog())
+                {
+                    fbd.Description = "Select a folder to dump the Carbins\nSelecione uma pasta para extrair os Carbins";
+                    if (fbd.ShowDialog() == DialogResult.OK)
+                    {
+                        var writer = new ForzaCarbinWriter(tableData, _carbinKey);
+                        writer.ExportToDirectory(fbd.SelectedPath);
+
+                        // O código original bloqueava essa parte com um 'return;'. Agora perguntamos se você quer as imagens!
+                        if (Horizon.Functions.UI.messageBox("Do you also want to extract the car thumbnails?\n\nVocê também quer extrair as miniaturas dos carros?", "Extract Thumbnails", MessageBoxIcon.Question, MessageBoxButtons.YesNo) == DialogResult.Yes)
+                        {
+                            string thumbPath = System.IO.Path.Combine(fbd.SelectedPath, "Thumbnails");
+                            if (!System.IO.Directory.Exists(thumbPath))
+                                System.IO.Directory.CreateDirectory(thumbPath);
+
+                            var reader = tableData.CreateDataReader();
+                            while (reader.Read())
+                            {
+                                try
+                                {
+                                    string filePath = Convert.ToString(reader["Thumbnail"]).Remove(0, 18);
+                                    byte[] fileData = Package.StfsContentPackage.ExtractFileToArray(filePath);
+
+                                    if (fileData != null && fileData.Length > 0)
+                                    {
+                                        string savePath = System.IO.Path.Combine(thumbPath, string.Format("Thumbnail_{0}.xdc", Convert.ToInt32(reader["CarId"])));
+                                        System.IO.File.WriteAllBytes(savePath, fileData); // Substituído o .Save() genérico pela forma mais segura e universal do C#
+                                    }
+                                }
+                                catch { } // Falhas individuais em thumbnails não devem derrubar o processo inteiro
+                            }
+                        }
+
+                        Horizon.Functions.UI.messageBox("Dump completed successfully!\n\nExtração concluída com sucesso!", "Success", MessageBoxIcon.Information);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Horizon.Functions.UI.messageBox("An error occurred during the dump:\n\nOcorreu um erro durante a extração:\n" + ex.Message, "Dump Error", MessageBoxIcon.Error);
             }
         }
 

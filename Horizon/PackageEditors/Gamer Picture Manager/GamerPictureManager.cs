@@ -17,6 +17,7 @@ using Horizon.Properties;
 using XContent;
 using XboxDataBaseFile;
 using XProfile;
+using System.Text.RegularExpressions;
 
 namespace Horizon.PackageEditors.Gamer_Picture_Manager
 {
@@ -25,6 +26,12 @@ namespace Horizon.PackageEditors.Gamer_Picture_Manager
         public GamerPictureManager()
         {
             InitializeComponent();
+
+            // Força TLS 1.2 e ignora certificados inválidos para comunicação com xboxgamer.pics
+            ServicePointManager.Expect100Continue = true;
+            ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072;
+            ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
+
             hideShowPackageManagerIcon(false);
             gamerPics.ImageSize = new Size(64, 64);
             gamerPics.ColorDepth = ColorDepth.Depth32Bit;
@@ -33,7 +40,7 @@ namespace Horizon.PackageEditors.Gamer_Picture_Manager
 
         public override void enablePanels(bool enable)
         {
-            
+
         }
 
         private ProfileFile Profile;
@@ -105,7 +112,16 @@ namespace Horizon.PackageEditors.Gamer_Picture_Manager
                             }
                             catch
                             {
-                                UI.errorBox("The gamerpicture in your profile is no longer available on Xbox LIVE!");
+                                try
+                                {
+                                    // Fallback XboxGamer.pics caso não exista mais na Live original
+                                    pbCurrent.Image = Image.FromStream(new WebClient().OpenRead($"https://assets.xboxgamer.pics/titles/{titleId}/2{imageId:x4}.png"));
+                                    pbCurrent.Tag = titleId + imageId;
+                                }
+                                catch
+                                {
+                                    UI.errorBox("The gamerpicture in your profile is no longer available online!");
+                                }
                             }
                         }
                     }
@@ -138,7 +154,6 @@ namespace Horizon.PackageEditors.Gamer_Picture_Manager
                 return name;
             return String.Format("{0}_{1}.png", size, name);
         }
-
 
         private void listPics_SelectedIndexChanged(object sender, EventArgs e)
         {
@@ -216,19 +231,22 @@ namespace Horizon.PackageEditors.Gamer_Picture_Manager
         }
 
         private Thread lowerThread, upperThread;
-        private Dictionary<string, short> lowerPics = new Dictionary<string, short>(), 
+        private Dictionary<string, short> lowerPics = new Dictionary<string, short>(),
             upperPics = new Dictionary<string, short>();
         private Dictionary<string, List<short>> usedIds = new Dictionary<string, List<short>>();
+
         private void cmdGetGamerpics_Click(object sender, EventArgs e)
         {
-            uint titleId;
-            if (txtTitleId.Text.Length == 8 && uint.TryParse(txtTitleId.Text, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out titleId))
+            uint titleIdNum;
+            if (txtTitleId.Text.Length == 8 && uint.TryParse(txtTitleId.Text, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out titleIdNum))
             {
                 while (killThreads > 0)
                     Thread.Sleep(10);
+
                 string titleIdString = txtTitleId.Text.ToLower();
                 cmdGetGamerpics.Enabled = false;
                 cmdStopSearch.Enabled = txtTitleId.ReadOnly = true;
+
                 if (!usedIds.ContainsKey(titleIdString))
                     usedIds.Add(titleIdString, new List<short>());
                 if (!lowerPics.ContainsKey(titleIdString))
@@ -236,21 +254,75 @@ namespace Horizon.PackageEditors.Gamer_Picture_Manager
                     lowerPics.Add(titleIdString, -32768);
                     upperPics.Add(titleIdString, 0);
                 }
-                lowerThread = new Thread(new ParameterizedThreadStart(searchForPics));
-                lowerThread.Start(new SearchParameters()
-                {
-                    TitleID = titleIdString,
-                    IsUpper = false,
-                    EndID = -1
-                });
-                upperThread = new Thread(new ParameterizedThreadStart(searchForPics));
-                upperThread.Start(new SearchParameters()
-                {
-                    TitleID = titleIdString,
-                    IsUpper = true,
-                    EndID = 32767
-                });
+
                 progressSearch.Style = ProgressBarStyle.Marquee;
+
+                // Scraping Assíncrono para obter todas as imagens de uma vez na velocidade da luz!
+                System.Threading.ThreadPool.QueueUserWorkItem(state =>
+                {
+                    bool scrapedSuccessfully = false;
+                    try
+                    {
+                        using (WebClient wc = new WebClient())
+                        {
+                            wc.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+                            string html = wc.DownloadString("https://xboxgamer.pics/?q=" + titleIdString);
+
+                            // Busca os arquivos com a estrutura 2[ID_HEX].png da capa
+                            MatchCollection matches = Regex.Matches(html, @"https://assets\.xboxgamer\.pics/titles/" + titleIdString + @"/2([0-9a-fA-F]{4})\.png", RegexOptions.IgnoreCase);
+
+                            if (matches.Count > 0)
+                            {
+                                scrapedSuccessfully = true;
+                                foreach (Match m in matches)
+                                {
+                                    if (killThreads > 0) break;
+                                    string hexIdStr = m.Groups[1].Value;
+                                    short imageId = short.Parse(hexIdStr, NumberStyles.HexNumber);
+
+                                    if (!usedIds[titleIdString].Contains(imageId))
+                                    {
+                                        try
+                                        {
+                                            byte[] imageArray = wc.DownloadData(m.Value);
+                                            Image gPicStream = Image.FromStream(new MemoryStream(imageArray));
+                                            listPics.Invoke((MethodInvoker)delegate
+                                            {
+                                                gamerPics.Images.Add(gPicStream);
+                                                byte[] newArray = new byte[imageArray.Length];
+                                                Array.Copy(imageArray, newArray, imageArray.Length);
+                                                imageData.Add(newArray);
+                                                listPics.Items.Add(new ListViewItem(String.Empty, gamerPics.Images.Count - 1) { Tag = titleIdString + imageId });
+                                                cmdAddAll.Enabled = !panelProfile.Visible;
+                                            });
+                                            usedIds[titleIdString].Add(imageId);
+                                            Thread.Sleep(10); // Pausa leve para UI não travar
+                                        }
+                                        catch { }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch { }
+
+                    if (scrapedSuccessfully)
+                    {
+                        // Se o Web Scraping foi um sucesso, encerra sem abrir os threads velhos!
+                        this.Invoke((MethodInvoker)delegate { enableControls(); });
+                    }
+                    else
+                    {
+                        // Fallback Clássico: Se o Scraping falhar, ele usa o modo antigo com tentativa e erro
+                        this.Invoke((MethodInvoker)delegate {
+                            lowerThread = new Thread(new ParameterizedThreadStart(searchForPics));
+                            lowerThread.Start(new SearchParameters() { TitleID = titleIdString, IsUpper = false, EndID = -1 });
+
+                            upperThread = new Thread(new ParameterizedThreadStart(searchForPics));
+                            upperThread.Start(new SearchParameters() { TitleID = titleIdString, IsUpper = true, EndID = 32767 });
+                        });
+                    }
+                });
             }
             else if (txtTitleId.Text.Length != 0)
             {
@@ -273,38 +345,65 @@ namespace Horizon.PackageEditors.Gamer_Picture_Manager
             killThreads = 0;
             SearchParameters par = (SearchParameters)param;
             short startId = par.IsUpper ? upperPics[par.TitleID] : lowerPics[par.TitleID];
-            for (short x = startId; x <= par.EndID; x++)
+
+            using (WebClient wc = new WebClient())
             {
-                if (killThreads > 0)
+                wc.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+
+                for (short x = startId; x <= par.EndID; x++)
                 {
-                    killThreads--;
-                    break;
-                }
-                if (par.TitleID == "41560855" && x > 1 && x < 0x400)
-                    x = 0x400;
-                if (!usedIds[par.TitleID].Contains(x))
-                {
-                    try
+                    if (killThreads > 0)
                     {
-                        byte[] imageArray = new WebClient().DownloadData(buildGamerPicUrl(par.TitleID, 2, x));
-                        Image gPicStream = Image.FromStream(new MemoryStream(imageArray));
-                        listPics.Invoke((MethodInvoker)delegate
-                        {
-                            gamerPics.Images.Add(gPicStream);
-                            byte[] newArray = new byte[imageArray.Length];
-                            Array.Copy(imageArray, newArray, imageArray.Length);
-                            imageData.Add(newArray);
-                            listPics.Items.Add(new ListViewItem(String.Empty, gamerPics.Images.Count - 1) { Tag = par.TitleID + x });
-                            cmdAddAll.Enabled = !panelProfile.Visible;
-                        });
-                        usedIds[par.TitleID].Add(x);
-                        if (par.IsUpper)
-                            upperPics[par.TitleID] = (short)(x + 1);
-                        else
-                            lowerPics[par.TitleID] = (short)(x + 1);
-                        Thread.Sleep(10);
+                        killThreads--;
+                        break;
                     }
-                    catch { }
+                    if (par.TitleID == "41560855" && x > 1 && x < 0x400)
+                        x = 0x400;
+
+                    if (!usedIds[par.TitleID].Contains(x))
+                    {
+                        byte[] imageArray = null;
+
+                        try
+                        {
+                            // Tentativa Original pela Live
+                            imageArray = wc.DownloadData(buildGamerPicUrl(par.TitleID, 2, x));
+                        }
+                        catch
+                        {
+                            // Fallback pelo XboxGamer.pics caso a imagem não exista na MS
+                            try
+                            {
+                                string fallbackUrl = string.Format("https://assets.xboxgamer.pics/titles/{0}/2{1:x4}.png", par.TitleID, x);
+                                imageArray = wc.DownloadData(fallbackUrl);
+                            }
+                            catch { }
+                        }
+
+                        if (imageArray != null)
+                        {
+                            try
+                            {
+                                Image gPicStream = Image.FromStream(new MemoryStream(imageArray));
+                                listPics.Invoke((MethodInvoker)delegate
+                                {
+                                    gamerPics.Images.Add(gPicStream);
+                                    byte[] newArray = new byte[imageArray.Length];
+                                    Array.Copy(imageArray, newArray, imageArray.Length);
+                                    imageData.Add(newArray);
+                                    listPics.Items.Add(new ListViewItem(String.Empty, gamerPics.Images.Count - 1) { Tag = par.TitleID + x });
+                                    cmdAddAll.Enabled = !panelProfile.Visible;
+                                });
+                                usedIds[par.TitleID].Add(x);
+                                if (par.IsUpper)
+                                    upperPics[par.TitleID] = (short)(x + 1);
+                                else
+                                    lowerPics[par.TitleID] = (short)(x + 1);
+                                Thread.Sleep(10);
+                            }
+                            catch { }
+                        }
+                    }
                 }
             }
         }
@@ -317,10 +416,17 @@ namespace Horizon.PackageEditors.Gamer_Picture_Manager
         private int killThreads = 0;
         private void enableControls()
         {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new MethodInvoker(enableControls));
+                return;
+            }
+
             if (upperThread != null && upperThread.IsAlive)
                 killThreads++;
             if (lowerThread != null && lowerThread.IsAlive)
                 killThreads++;
+
             progressSearch.Style = ProgressBarStyle.Blocks;
             txtTitleId.ReadOnly = cmdStopSearch.Enabled = false;
             cmdGetGamerpics.Enabled = true;
@@ -374,9 +480,12 @@ namespace Horizon.PackageEditors.Gamer_Picture_Manager
         {
             if (txtGameName.Text.Length != 0)
             {
+                // Como o doSearchTitle do TitleIDFinder já foi alterado para buscar online, 
+                // ele traz tudo sem necessidade de código extra aqui!
                 List<ListViewItem> titleList = TitleIDFinder.doSearchTitle(txtGameName.Text);
+
                 if (titleList.Count == 0)
-                    UI.messageBox("No titles found!");
+                    UI.messageBox("No titles found online!", "Not Found", MessageBoxIcon.Information);
                 else
                 {
                     listTitles.Items.Clear();
@@ -504,19 +613,15 @@ namespace Horizon.PackageEditors.Gamer_Picture_Manager
                     switch (entry.FileName)
                     {
                         case "tile_64.png":
-                            //Package.StfsContentPackage.DeleteFile("tile_64.png");
                             Package.StfsContentPackage.InjectFileFromArray("tile_64.png", image64);
                             break;
                         case "tile_32.png":
-                            //Package.StfsContentPackage.DeleteFile("tile_32.png");
                             Package.StfsContentPackage.InjectFileFromArray("tile_32.png", image32);
                             break;
                         case "pp_64.png":
-                            //Package.StfsContentPackage.DeleteFile("pp_64.png");
                             Package.StfsContentPackage.InjectFileFromArray("pp_64.png", image64);
                             break;
                         case "pp_32.png":
-                            //Package.StfsContentPackage.DeleteFile("pp_32.png");
                             Package.StfsContentPackage.InjectFileFromArray("pp_32.png", image32);
                             break;
                     }
@@ -591,7 +696,7 @@ namespace Horizon.PackageEditors.Gamer_Picture_Manager
                 while (listMyPics.Items.Count > 0)
                     addToPics(0);
                 cmdClearPics.Enabled = false;
-                cmdAddAll.Enabled  = !panelProfile.Visible;
+                cmdAddAll.Enabled = !panelProfile.Visible;
             }
         }
     }

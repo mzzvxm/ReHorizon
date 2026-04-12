@@ -59,12 +59,12 @@ namespace Horizon.Functions
             path.AddString(text, font.FontFamily, (int)font.Style, font.Size, rect, format);
             float v = 4f;
             PointF[] points =
-			{
-				new PointF(random.Next(rect.Width) / v, random.Next(rect.Height) / v),
-				new PointF(rect.Width - random.Next(rect.Width) / v, random.Next(rect.Height) / v),
-				new PointF(random.Next(rect.Width) / v, rect.Height - random.Next(rect.Height) / v),
-				new PointF(rect.Width - random.Next(rect.Width) / v, rect.Height - random.Next(rect.Height) / v)
-			};
+            {
+                new PointF(random.Next(rect.Width) / v, random.Next(rect.Height) / v),
+                new PointF(rect.Width - random.Next(rect.Width) / v, random.Next(rect.Height) / v),
+                new PointF(random.Next(rect.Width) / v, rect.Height - random.Next(rect.Height) / v),
+                new PointF(rect.Width - random.Next(rect.Width) / v, rect.Height - random.Next(rect.Height) / v)
+            };
             Matrix matrix = new Matrix();
             matrix.Translate(0, 0);
             path.Warp(points, rect, matrix, WarpMode.Perspective, 0f);
@@ -98,7 +98,9 @@ namespace Horizon.Functions
 
         internal static string base64Decode(string input)
         {
-            return Encoding.Default.GetString(Convert.FromBase64String(input));
+            if (string.IsNullOrEmpty(input))
+                return string.Empty;
+            return Encoding.UTF8.GetString(Convert.FromBase64String(input));
         }
 
         internal static byte[] makeHMACMD5(string key, string message)
@@ -153,7 +155,7 @@ namespace Horizon.Functions
 
         internal static byte[] convertToBigEndian(byte[] input)
         {
-            if(BitConverter.IsLittleEndian)
+            if (BitConverter.IsLittleEndian)
                 Array.Reverse(input);
 
             return input;

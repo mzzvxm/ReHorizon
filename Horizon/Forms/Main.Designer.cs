@@ -88,6 +88,7 @@
             this.tabFatxDrive = new DevComponents.DotNetBar.RibbonTabItem();
             this.cmdLoadDump = new DevComponents.DotNetBar.ButtonItem();
             this.cmdLoadUsbDump = new DevComponents.DotNetBar.ButtonItem();
+            this.cmdConnectFtp = new DevComponents.DotNetBar.ButtonItem();
             this.cmdFatxUnload = new DevComponents.DotNetBar.ButtonItem();
             this.progressFatx = new System.Windows.Forms.ProgressBar();
             this.cmdFatxExpand = new DevComponents.DotNetBar.ButtonX();
@@ -940,6 +941,7 @@
             this.tabFatxDrive,
             this.cmdLoadDump,
             this.cmdLoadUsbDump,
+            this.cmdConnectFtp,
             this.cmdFatxUnload});
             this.rbFatx.KeyTipsFont = new System.Drawing.Font("Tahoma", 7F);
             this.rbFatx.Location = new System.Drawing.Point(1, 0);
@@ -1117,6 +1119,14 @@
             this.cmdLoadUsbDump.Shape = new DevComponents.DotNetBar.RoundRectangleShapeDescriptor();
             this.cmdLoadUsbDump.Text = "Open USB";
             this.cmdLoadUsbDump.Visible = false;
+            // 
+            // cmdConnectFtp
+            // 
+            this.cmdConnectFtp.ColorTable = DevComponents.DotNetBar.eButtonColor.OrangeWithBackground;
+            this.cmdConnectFtp.ItemAlignment = DevComponents.DotNetBar.eItemAlignment.Far;
+            this.cmdConnectFtp.Name = "cmdConnectFtp";
+            this.cmdConnectFtp.Shape = new DevComponents.DotNetBar.RoundRectangleShapeDescriptor();
+            this.cmdConnectFtp.Text = "Connect FTP";
             // 
             // cmdFatxUnload
             // 
@@ -1477,6 +1487,7 @@
         internal DevComponents.AdvTree.ColumnHeader colTreeInfo;
         internal DevComponents.DotNetBar.ButtonItem cmdLoadDump;
         internal DevComponents.DotNetBar.ButtonItem cmdLoadUsbDump;
+        internal DevComponents.DotNetBar.ButtonItem cmdConnectFtp;
         internal System.Windows.Forms.ToolStripSeparator fatxMenuLine;
         internal System.Windows.Forms.ToolStripMenuItem cmdFatxToolClearTitleCache;
         internal System.Windows.Forms.ToolStripMenuItem cmdFatxToolRenameDevice;

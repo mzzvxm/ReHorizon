@@ -34,11 +34,26 @@ namespace Horizon.PackageEditors.Far_Cry_4
 
             SaveGame = new FarCry4Save(IO);
 
-            //if (_campaignSavePlugin == null)
-            //    _campaignSavePlugin = File.ReadAllText(@"E:\Projects\Far Cry 4\CampaignSave.fc4");
-
             if (_campaignSavePlugin == null)
-                _campaignSavePlugin = Global.base64Decode(SettingAsString(48));
+            {
+                string raw = SettingAsString(48);
+                if (string.IsNullOrEmpty(raw))
+                {
+                    Functions.UI.messageBox(
+                        "Nao foi possivel carregar o plugin de save do Far Cry 4 (setting 48 ausente ou servidor indisponivel).",
+                        "Far Cry 4", System.Windows.Forms.MessageBoxIcon.Error);
+                    return false;
+                }
+                _campaignSavePlugin = Global.base64Decode(raw);
+            }
+
+            if (string.IsNullOrEmpty(_campaignSavePlugin))
+            {
+                Functions.UI.messageBox(
+                    "Plugin de save do Far Cry 4 esta vazio ou corrompido.",
+                    "Far Cry 4", System.Windows.Forms.MessageBoxIcon.Error);
+                return false;
+            }
 
             CreateComponents();
 
@@ -61,7 +76,13 @@ namespace Horizon.PackageEditors.Far_Cry_4
             if (sfd.ShowDialog() != DialogResult.OK)
                 return;
 
-            SaveGame.Export().Save(sfd.FileName);
+            var exportIo = SaveGame.Export();
+            if (exportIo == null)
+            {
+                Functions.UI.messageBox("Export nao disponivel para este save.", "Far Cry 4", System.Windows.Forms.MessageBoxIcon.Warning);
+                return;
+            }
+            File.WriteAllBytes(sfd.FileName, exportIo.ToArray());
         }
 
         private void CreateComponents()
@@ -167,14 +188,22 @@ namespace Horizon.PackageEditors.Far_Cry_4
             Dictionary<uint, int[]> searchDict = new Dictionary<uint, int[]>();
             FarCry3SaveEntry originalEntry = entry;
             int accessSearchIndex = 0x00;
+            int maxIterations = accessIds.Count * 1000; // previne loop infinito
+            int iterations = 0;
+
             while ((entry = FindItemEntryFromId(entry, accessIds, searchDict, ref accessSearchIndex)) == null)
             {
                 entry = originalEntry;
+                if (++iterations > maxIterations || accessSearchIndex >= accessIds.Count)
+                    throw new Exception(string.Format("Atributo '{0}' nao encontrado no save do Far Cry 4.", attribute));
             }
             return SaveGame.GetEntryData(entry.Attributes[FarCry3Attribute.GetIdent(attribute)]);
         }
         private FarCry3SaveEntry FindItemEntryFromId(FarCry3SaveEntry entry, List<uint> accessIds, Dictionary<uint, int[]> searchDict, ref int accessSearchIndex)
         {
+            if (accessSearchIndex >= accessIds.Count)
+                return entry; // todos os IDs foram resolvidos
+
             uint currentSearchId = accessIds[accessSearchIndex];
             foreach (uint accessId in accessIds)
             {
@@ -184,12 +213,20 @@ namespace Horizon.PackageEditors.Far_Cry_4
                 entry = SaveGame.GetEntryFromItemId(accessId, entry, searchDict.ContainsKey(accessId) ? searchDict[accessId][0x00] : 0x00);
 
                 if (entry != null) continue;
-                if (searchDict[currentSearchId][0x00] < (searchDict[currentSearchId][0x01] - 1))
+
+                if (searchDict.ContainsKey(currentSearchId) &&
+                    searchDict[currentSearchId][0x00] < (searchDict[currentSearchId][0x01] - 1))
+                {
                     searchDict[accessIds[accessSearchIndex]][0x00]++;
+                }
                 else
                 {
-                    searchDict[accessIds[accessSearchIndex]][0x00] = 0x00;
-                    accessSearchIndex++;
+                    if (searchDict.ContainsKey(accessIds[accessSearchIndex]))
+                        searchDict[accessIds[accessSearchIndex]][0x00] = 0x00;
+
+                    // só avança o índice se ainda houver IDs restantes
+                    if (accessSearchIndex < accessIds.Count - 1)
+                        accessSearchIndex++;
                 }
 
                 break;

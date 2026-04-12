@@ -51,6 +51,11 @@ namespace Horizon.PackageEditors.Forza_Horizon
 
             _aesKey = SettingAsByteArray(74);
             _hmacKey = SettingAsByteArray(92);
+            if (_aesKey == null || _hmacKey == null)
+            {
+                Functions.UI.messageBox("As chaves de screenshot do Forza Horizon nao foram carregadas. O editor foi fechado para evitar um crash.", "Forza Horizon Screenshot", MessageBoxIcon.Warning);
+                return false;
+            }
 
             pictureBox1.BackgroundImage = null;
             cmbBoxScreenshotIndex.SelectedIndex = 0x00;
@@ -59,13 +64,21 @@ namespace Horizon.PackageEditors.Forza_Horizon
 
         private void ScreenshotIndexChanged(object sender, EventArgs e)
         {
-            _imageFolderName = _imageFolders[cmbBoxScreenshotIndex.SelectedIndex][0];
+            try
+            {
+                _imageFolderName = _imageFolders[cmbBoxScreenshotIndex.SelectedIndex][0];
 
-            _screenshotPath = _imageFolderName + "\\" + _imageFolders[cmbBoxScreenshotIndex.SelectedIndex][1];
+                _screenshotPath = _imageFolderName + "\\" + _imageFolders[cmbBoxScreenshotIndex.SelectedIndex][1];
 
-            OpenScreenshot();
+                OpenScreenshot();
 
-            pictureBox1.Image = Image.FromStream(Package.StfsContentPackage.GetFileStream(_imageFolderName + "\\thumb"));
+                pictureBox1.Image = Image.FromStream(Package.StfsContentPackage.GetFileStream(_imageFolderName + "\\thumb"));
+            }
+            catch (Exception ex)
+            {
+                pictureBox1.Image = null;
+                Functions.UI.messageBox(ex.Message, "Forza Horizon Screenshot", MessageBoxIcon.Warning);
+            }
         }
         private void BtnClickExtract(object sender, EventArgs e)
         {
@@ -98,7 +111,11 @@ namespace Horizon.PackageEditors.Forza_Horizon
         private void OpenScreenshot()
         {
             // re-open the screenshot's EndianIO
-            OpenStfsFile(_screenshotPath);
+            if (!OpenStfsFile(_screenshotPath))
+                throw new ForzaException("Nao foi possivel abrir o arquivo de screenshot do pacote.");
+
+            if (_aesKey == null || _hmacKey == null)
+                throw new ForzaException("As chaves de screenshot do Forza Horizon nao estao disponiveis.");
 
             _screenshot = new ForzaScreenshot(IO, _creator, _aesKey, _hmacKey, ForzaVersion.ForzaHorizon);
         }

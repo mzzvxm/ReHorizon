@@ -34,6 +34,11 @@
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle5 = new System.Windows.Forms.DataGridViewCellStyle();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle3 = new System.Windows.Forms.DataGridViewCellStyle();
+            this.rbPackageEditor = new DevComponents.DotNetBar.RibbonControl();
+            this.cmdOpen = new DevComponents.DotNetBar.Office2007StartButton();
+            this.cmdSave = new DevComponents.DotNetBar.Office2007StartButton();
+            this.panelMain = new DevComponents.DotNetBar.RibbonPanel();
+            this.tabMain = new DevComponents.DotNetBar.RibbonTabItem();
             this.tabAward = new DevComponents.DotNetBar.RibbonTabItem();
             this.ribbonPanel1 = new DevComponents.DotNetBar.RibbonPanel();
             this.panelAward = new DevComponents.DotNetBar.PanelEx();
@@ -49,9 +54,9 @@
             this.cmdUnlockAllAwards = new DevComponents.DotNetBar.ButtonX();
             this.pTotal = new DevComponents.DotNetBar.Controls.ProgressBarX();
             this.listGames = new System.Windows.Forms.ListView();
-            this.col1 = new System.Windows.Forms.ColumnHeader();
-            this.col2 = new System.Windows.Forms.ColumnHeader();
-            this.col3 = new System.Windows.Forms.ColumnHeader();
+            this.col1 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.col2 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.col3 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.listAwards = new DevComponents.DotNetBar.Controls.DataGridViewX();
             this.colIcon = new System.Windows.Forms.DataGridViewImageColumn();
             this.colAward = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -74,16 +79,30 @@
             // 
             // rbPackageEditor
             // 
+            this.rbPackageEditor.AutoExpand = false;
             // 
             // 
             // 
             this.rbPackageEditor.BackgroundStyle.Class = "";
             this.rbPackageEditor.BackgroundStyle.CornerType = DevComponents.DotNetBar.eCornerType.Square;
+            this.rbPackageEditor.CanCustomize = false;
+            this.rbPackageEditor.CaptionVisible = true;
+            this.rbPackageEditor.Controls.Add(this.panelMain);
             this.rbPackageEditor.Controls.Add(this.ribbonPanel1);
             this.rbPackageEditor.Dock = System.Windows.Forms.DockStyle.Top;
+            this.rbPackageEditor.EnableQatPlacement = false;
             this.rbPackageEditor.Items.AddRange(new DevComponents.DotNetBar.BaseItem[] {
+            this.cmdOpen,
+            this.cmdSave,
+            this.tabMain,
             this.tabAward});
+            this.rbPackageEditor.KeyTipsFont = new System.Drawing.Font("Tahoma", 7F);
+            this.rbPackageEditor.Location = new System.Drawing.Point(5, 1);
+            this.rbPackageEditor.Margin = new System.Windows.Forms.Padding(0);
+            this.rbPackageEditor.Name = "rbPackageEditor";
+            this.rbPackageEditor.Padding = new System.Windows.Forms.Padding(0, 0, 0, 2);
             this.rbPackageEditor.Size = new System.Drawing.Size(696, 125);
+            this.rbPackageEditor.Style = DevComponents.DotNetBar.eDotNetBarStyle.StyleManagerControlled;
             this.rbPackageEditor.SystemText.MaximizeRibbonText = "&Maximize the Ribbon";
             this.rbPackageEditor.SystemText.MinimizeRibbonText = "Mi&nimize the Ribbon";
             this.rbPackageEditor.SystemText.QatAddItemText = "&Add to Quick Access Toolbar";
@@ -99,17 +118,46 @@
             this.rbPackageEditor.SystemText.QatPlaceAboveRibbonText = "&Place Quick Access Toolbar above the Ribbon";
             this.rbPackageEditor.SystemText.QatPlaceBelowRibbonText = "&Place Quick Access Toolbar below the Ribbon";
             this.rbPackageEditor.SystemText.QatRemoveItemText = "&Remove from Quick Access Toolbar";
-            this.rbPackageEditor.Controls.SetChildIndex(this.ribbonPanel1, 0);
-            this.rbPackageEditor.Controls.SetChildIndex(this.panelMain, 0);
+            this.rbPackageEditor.TabGroupHeight = 14;
+            this.rbPackageEditor.TabIndex = 1;
+            // 
+            // cmdOpen
+            // 
+            this.cmdOpen.CanCustomize = false;
+            this.cmdOpen.ColorTable = DevComponents.DotNetBar.eButtonColor.Blue;
+            this.cmdOpen.FixedSize = new System.Drawing.Size(60, 23);
+            this.cmdOpen.HotTrackingStyle = DevComponents.DotNetBar.eHotTrackingStyle.Image;
+            this.cmdOpen.ImageFixedSize = new System.Drawing.Size(16, 16);
+            this.cmdOpen.ImagePaddingHorizontal = 0;
+            this.cmdOpen.ImagePaddingVertical = 0;
+            this.cmdOpen.Name = "cmdOpen";
+            this.cmdOpen.ShowSubItems = false;
+            this.cmdOpen.Text = "Open";
+            // 
+            // cmdSave
+            // 
+            this.cmdSave.CanCustomize = false;
+            this.cmdSave.FixedSize = new System.Drawing.Size(60, 23);
+            this.cmdSave.HotTrackingStyle = DevComponents.DotNetBar.eHotTrackingStyle.Image;
+            this.cmdSave.ImageFixedSize = new System.Drawing.Size(16, 16);
+            this.cmdSave.ImagePaddingHorizontal = 0;
+            this.cmdSave.ImagePaddingVertical = 0;
+            this.cmdSave.Name = "cmdSave";
+            this.cmdSave.ShowSubItems = false;
+            this.cmdSave.Text = "Save";
             // 
             // panelMain
             // 
+            this.panelMain.ColorSchemeStyle = DevComponents.DotNetBar.eDotNetBarStyle.StyleManagerControlled;
             this.panelMain.Controls.Add(this.pTotalTitle);
             this.panelMain.Controls.Add(this.pTotal);
             this.panelMain.Controls.Add(this.cmdUnlockAllAwards);
             this.panelMain.Controls.Add(this.pbGame);
             this.panelMain.Controls.Add(this.cmdUnlockAll);
+            this.panelMain.Dock = System.Windows.Forms.DockStyle.Fill;
             this.panelMain.Location = new System.Drawing.Point(0, 53);
+            this.panelMain.Name = "panelMain";
+            this.panelMain.Padding = new System.Windows.Forms.Padding(3, 0, 3, 3);
             this.panelMain.Size = new System.Drawing.Size(696, 70);
             // 
             // 
@@ -126,10 +174,14 @@
             // 
             this.panelMain.StyleMouseOver.Class = "";
             this.panelMain.StyleMouseOver.CornerType = DevComponents.DotNetBar.eCornerType.Square;
+            this.panelMain.TabIndex = 1;
             this.panelMain.Visible = true;
             // 
             // tabMain
             // 
+            this.tabMain.Checked = true;
+            this.tabMain.Name = "tabMain";
+            this.tabMain.Panel = this.panelMain;
             this.tabMain.Text = "Game";
             // 
             // tabAward
@@ -392,8 +444,9 @@
             this.col1,
             this.col2,
             this.col3});
-            this.listGames.Font = new System.Drawing.Font("Arial Unicode MS", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.listGames.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.listGames.FullRowSelect = true;
+            this.listGames.HideSelection = false;
             this.listGames.Location = new System.Drawing.Point(5, 126);
             this.listGames.MultiSelect = false;
             this.listGames.Name = "listGames";
@@ -453,7 +506,7 @@
             this.listAwards.ShowCellToolTips = false;
             this.listAwards.ShowEditingIcon = false;
             this.listAwards.ShowRowErrors = false;
-            this.listAwards.Size = new System.Drawing.Size(472, 357);
+            this.listAwards.Size = new System.Drawing.Size(472, 355);
             this.listAwards.TabIndex = 8;
             this.listAwards.SelectionChanged += new System.EventHandler(this.listAwards_SelectionChanged);
             // 
@@ -469,7 +522,7 @@
             // 
             // colAward
             // 
-            dataGridViewCellStyle2.Font = new System.Drawing.Font("Arial Unicode MS", 8.25F);
+            dataGridViewCellStyle2.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F);
             this.colAward.DefaultCellStyle = dataGridViewCellStyle2;
             this.colAward.HeaderText = "Avatar Award";
             this.colAward.Name = "colAward";
@@ -480,7 +533,7 @@
             // colDescription
             // 
             this.colDescription.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
-            dataGridViewCellStyle3.Font = new System.Drawing.Font("Arial Unicode MS", 8.25F);
+            dataGridViewCellStyle3.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F);
             this.colDescription.DefaultCellStyle = dataGridViewCellStyle3;
             this.colDescription.HeaderText = "Description";
             this.colDescription.Name = "colDescription";
@@ -533,16 +586,12 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(706, 485);
+            this.ClientSize = new System.Drawing.Size(706, 483);
             this.Controls.Add(this.pbMarketplace);
             this.Controls.Add(this.listGames);
             this.Controls.Add(this.listAwards);
             this.Name = "AvatarAwardUnlocker";
             this.Text = "Avatar Award Unlocker";
-            this.Controls.SetChildIndex(this.rbPackageEditor, 0);
-            this.Controls.SetChildIndex(this.listAwards, 0);
-            this.Controls.SetChildIndex(this.listGames, 0);
-            this.Controls.SetChildIndex(this.pbMarketplace, 0);
             this.rbPackageEditor.ResumeLayout(false);
             this.rbPackageEditor.PerformLayout();
             this.panelMain.ResumeLayout(false);
@@ -586,5 +635,10 @@
         private System.Windows.Forms.ToolStripMenuItem extractAwardsToolStripMenuItem;
         private DevComponents.DotNetBar.Controls.ProgressBarX pTotalTitle;
         private System.Windows.Forms.PictureBox pbMarketplace;
+        private DevComponents.DotNetBar.RibbonControl rbPackageEditor;
+        private DevComponents.DotNetBar.RibbonPanel panelMain;
+        private DevComponents.DotNetBar.Office2007StartButton cmdOpen;
+        private DevComponents.DotNetBar.Office2007StartButton cmdSave;
+        private DevComponents.DotNetBar.RibbonTabItem tabMain;
     }
 }

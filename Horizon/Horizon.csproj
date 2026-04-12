@@ -135,6 +135,9 @@
     <Compile Include="Forms\DeviceWindow.Designer.cs">
       <DependentUpon>DeviceWindow.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FtpConnectDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Forms\TitleCrawler.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -148,6 +151,7 @@
       <DependentUpon>TitleSettingsManager.cs</DependentUpon>
     </Compile>
     <Compile Include="Functions\Extensions.cs" />
+    <Compile Include="Functions\FtpClient.cs" />
     <Compile Include="Functions\Win32.cs" />
     <Compile Include="Handles\ClipboardHelper.cs" />
     <Compile Include="Handles\FatxHandle.cs">
