@@ -419,3 +419,4 @@ FodyWeavers.xsd
 *.DS_Store
 .idea
 .vscode
+/Horizon/bin/INT2/Horizon.application
