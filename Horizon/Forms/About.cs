@@ -28,11 +28,18 @@ namespace Horizon.Forms
             Tag = false;
         }
 
-        private void cmdVisitUs_Click(object sender, EventArgs e)
+        private void btnMyGithub_Click(object sender, EventArgs e)
         {
-            cmdVisitUs.Enabled = false;
-            Process.Start(Config.serverURL);
-            cmdVisitUs.Enabled = true;
+            btnMyGithub.Enabled = false;
+            Process.Start("https://github.com/mzzvxm/");
+            btnMyGithub.Enabled = true;
+        }
+
+        private void btnSourceGithub_Click(object sender, EventArgs e)
+        {
+            btnSourceGithub.Enabled = false;
+            Process.Start("https://github.com/unknownv2/");
+            btnSourceGithub.Enabled = true;
         }
 
         int x = new int();

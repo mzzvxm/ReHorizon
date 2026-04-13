@@ -422,3 +422,4 @@ FodyWeavers.xsd
 
 # Build Folder
 /Horizon/bin/INT2
+/Horizon/bin/PROD

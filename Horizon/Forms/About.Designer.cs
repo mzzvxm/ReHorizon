@@ -32,7 +32,8 @@ namespace Horizon.Forms
             this.rbAbout = new DevComponents.DotNetBar.RibbonControl();
             this.ribbonPanel1 = new DevComponents.DotNetBar.RibbonPanel();
             this.panelVersion = new DevComponents.DotNetBar.PanelEx();
-            this.cmdVisitUs = new DevComponents.DotNetBar.ButtonX();
+            this.btnMyGithub = new DevComponents.DotNetBar.ButtonX();
+            this.btnSourceGithub = new DevComponents.DotNetBar.ButtonX();
             this.gpDevelopers = new DevComponents.DotNetBar.Controls.GroupPanel();
             this.lblDevelopers = new DevComponents.DotNetBar.LabelX();
             this.pbLogo = new System.Windows.Forms.PictureBox();
@@ -97,7 +98,8 @@ namespace Horizon.Forms
             // 
             this.ribbonPanel1.ColorSchemeStyle = DevComponents.DotNetBar.eDotNetBarStyle.StyleManagerControlled;
             this.ribbonPanel1.Controls.Add(this.panelVersion);
-            this.ribbonPanel1.Controls.Add(this.cmdVisitUs);
+            this.ribbonPanel1.Controls.Add(this.btnMyGithub);
+            this.ribbonPanel1.Controls.Add(this.btnSourceGithub);
             this.ribbonPanel1.Controls.Add(this.gpDevelopers);
             this.ribbonPanel1.Controls.Add(this.pbLogo);
             this.ribbonPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -142,20 +144,35 @@ namespace Horizon.Forms
             this.panelVersion.TabIndex = 3;
             this.panelVersion.Text = "v";
             // 
-            // cmdVisitUs
+            // btnMyGithub
             // 
-            this.cmdVisitUs.AccessibleRole = System.Windows.Forms.AccessibleRole.PushButton;
-            this.cmdVisitUs.ColorTable = DevComponents.DotNetBar.eButtonColor.OrangeWithBackground;
-            this.cmdVisitUs.FocusCuesEnabled = false;
-            this.cmdVisitUs.Font = new System.Drawing.Font("Microsoft Tai Le", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.cmdVisitUs.Location = new System.Drawing.Point(6, 64);
-            this.cmdVisitUs.Name = "cmdVisitUs";
-            this.cmdVisitUs.Shape = new DevComponents.DotNetBar.RoundRectangleShapeDescriptor();
-            this.cmdVisitUs.Size = new System.Drawing.Size(346, 40);
-            this.cmdVisitUs.Style = DevComponents.DotNetBar.eDotNetBarStyle.StyleManagerControlled;
-            this.cmdVisitUs.TabIndex = 2;
-            this.cmdVisitUs.Text = "github.com/mzzvxm";
-            this.cmdVisitUs.Click += new System.EventHandler(this.cmdVisitUs_Click);
+            this.btnMyGithub.AccessibleRole = System.Windows.Forms.AccessibleRole.PushButton;
+            this.btnMyGithub.ColorTable = DevComponents.DotNetBar.eButtonColor.OrangeWithBackground;
+            this.btnMyGithub.FocusCuesEnabled = false;
+            this.btnMyGithub.Font = new System.Drawing.Font("Microsoft Tai Le", 7F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnMyGithub.Location = new System.Drawing.Point(6, 64);
+            this.btnMyGithub.Name = "btnMyGithub";
+            this.btnMyGithub.Shape = new DevComponents.DotNetBar.RoundRectangleShapeDescriptor();
+            this.btnMyGithub.Size = new System.Drawing.Size(170, 40);
+            this.btnMyGithub.Style = DevComponents.DotNetBar.eDotNetBarStyle.StyleManagerControlled;
+            this.btnMyGithub.TabIndex = 2;
+            this.btnMyGithub.Text = "ReHorizon: mzzvxm";
+            this.btnMyGithub.Click += new System.EventHandler(this.btnMyGithub_Click);
+            // 
+            // btnSourceGithub
+            // 
+            this.btnSourceGithub.AccessibleRole = System.Windows.Forms.AccessibleRole.PushButton;
+            this.btnSourceGithub.ColorTable = DevComponents.DotNetBar.eButtonColor.OrangeWithBackground;
+            this.btnSourceGithub.FocusCuesEnabled = false;
+            this.btnSourceGithub.Font = new System.Drawing.Font("Microsoft Tai Le", 7F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnSourceGithub.Location = new System.Drawing.Point(182, 64);
+            this.btnSourceGithub.Name = "btnSourceGithub";
+            this.btnSourceGithub.Shape = new DevComponents.DotNetBar.RoundRectangleShapeDescriptor();
+            this.btnSourceGithub.Size = new System.Drawing.Size(170, 40);
+            this.btnSourceGithub.Style = DevComponents.DotNetBar.eDotNetBarStyle.StyleManagerControlled;
+            this.btnSourceGithub.TabIndex = 4;
+            this.btnSourceGithub.Text = "Source: UnknownV2";
+            this.btnSourceGithub.Click += new System.EventHandler(this.btnSourceGithub_Click);
             // 
             // gpDevelopers
             // 
@@ -197,7 +214,7 @@ namespace Horizon.Forms
             this.gpDevelopers.StyleMouseOver.Class = "";
             this.gpDevelopers.StyleMouseOver.CornerType = DevComponents.DotNetBar.eCornerType.Square;
             this.gpDevelopers.TabIndex = 1;
-            this.gpDevelopers.Text = " Horizon - Developed By";
+            this.gpDevelopers.Text = " ReHorizon - Credits";
             // 
             // lblDevelopers
             // 
@@ -207,12 +224,12 @@ namespace Horizon.Forms
             // 
             this.lblDevelopers.BackgroundStyle.Class = "";
             this.lblDevelopers.BackgroundStyle.CornerType = DevComponents.DotNetBar.eCornerType.Square;
-            this.lblDevelopers.Font = new System.Drawing.Font("Arial", 13F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblDevelopers.Font = new System.Drawing.Font("Arial", 11F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblDevelopers.Location = new System.Drawing.Point(3, 2);
             this.lblDevelopers.Name = "lblDevelopers";
             this.lblDevelopers.Size = new System.Drawing.Size(232, 32);
             this.lblDevelopers.TabIndex = 0;
-            this.lblDevelopers.Text = "No Development Inc.";
+            this.lblDevelopers.Text = "mzzvxm && UnknownV2";
             this.lblDevelopers.TextAlignment = System.Drawing.StringAlignment.Center;
             // 
             // pbLogo
@@ -298,7 +315,7 @@ namespace Horizon.Forms
             this.lblThanks3.RightToLeft = System.Windows.Forms.RightToLeft.No;
             this.lblThanks3.Size = new System.Drawing.Size(87, 94);
             this.lblThanks3.TabIndex = 2;
-            this.lblThanks3.Text = "Col2eight\r\nUSMC Sniper\r\nlolvo\r\nXxDEMONKILLAxX\r\nhippie\r\nZrueda\r\nTucker\r\nUnderCover" +
+            this.lblThanks3.Text = "Col2eight\r\nUSMC Sniper\r\nUnknownV2\r\nlolvo\r\nXxDEMONKILLAxX\r\nhippie\r\nZrueda\r\nTucker\r\nUnderCover" +
                 "UZI";
             this.lblThanks3.TextAlignment = System.Drawing.StringAlignment.Center;
             // 
@@ -314,7 +331,7 @@ namespace Horizon.Forms
             this.lblThanks2.Name = "lblThanks2";
             this.lblThanks2.Size = new System.Drawing.Size(75, 94);
             this.lblThanks2.TabIndex = 1;
-            this.lblThanks2.Text = "Crusader VI\r\nEmber\r\nnickcas\r\nCLK\r\nDaleUK\r\nDJ Shepherd\r\nAnthony\r\nRickshaw";
+            this.lblThanks2.Text = "Crusader VI\r\nEmber\r\nnickcas\r\nmzzvxm\r\nCLK\r\nDaleUK\r\nDJ Shepherd\r\nAnthony\r\nRickshaw";
             this.lblThanks2.TextAlignment = System.Drawing.StringAlignment.Center;
             // 
             // lblThanks1
@@ -383,7 +400,8 @@ namespace Horizon.Forms
         private DevComponents.DotNetBar.RibbonPanel ribbonPanel2;
         private DevComponents.DotNetBar.RibbonTabItem tabAbout;
         private DevComponents.DotNetBar.RibbonTabItem tabSpecialThanks;
-        private DevComponents.DotNetBar.ButtonX cmdVisitUs;
+        private DevComponents.DotNetBar.ButtonX btnMyGithub;
+        private DevComponents.DotNetBar.ButtonX btnSourceGithub;
         private DevComponents.DotNetBar.Controls.GroupPanel gpDevelopers;
         private DevComponents.DotNetBar.LabelX lblDevelopers;
         private System.Windows.Forms.PictureBox pbLogo;

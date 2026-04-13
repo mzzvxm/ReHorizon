@@ -162,7 +162,7 @@ namespace Horizon
             
             // Misc
             addForm(FormID.About, null, "About", FormType.Misc, Resources.About_Thumb, FormAccess.Anyone);
-            addForm(FormID.Visit, null, "github.com/mzzvxm", FormType.Misc, Resources.VisitUs_Thumb, FormAccess.Anyone);
+            addForm(FormID.Visit, null, "ReHorizon Repo", FormType.Misc, Resources.VisitUs_Thumb, FormAccess.Anyone);
         }
 
         // This function is called when a form button is clicked.
@@ -276,7 +276,7 @@ namespace Horizon
                     break;
 #endif
                 case FormID.Visit:
-                    System.Diagnostics.Process.Start(Config.serverURL);
+                    System.Diagnostics.Process.Start("https://github.com/mzzvxm/ReHorizon");
                     break;
                 case FormID.GamercardViewer:
                     new GamercardViewer().Show();
