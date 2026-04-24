@@ -27,7 +27,7 @@ namespace Horizon.PackageEditors.Gamer_Picture_Manager
         {
             InitializeComponent();
 
-            // Força TLS 1.2 e ignora certificados inválidos para comunicação com xboxgamer.pics
+            // ForÃ§a TLS 1.2 e ignora certificados invÃ¡lidos para comunicaÃ§Ã£o com xboxgamer.pics
             ServicePointManager.Expect100Continue = true;
             ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072;
             ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
@@ -114,8 +114,8 @@ namespace Horizon.PackageEditors.Gamer_Picture_Manager
                             {
                                 try
                                 {
-                                    // Fallback XboxGamer.pics caso não exista mais na Live original
-                                    pbCurrent.Image = Image.FromStream(new WebClient().OpenRead($"https://assets.xboxgamer.pics/titles/{titleId}/2{imageId:x4}.png"));
+                                    // Fallback XboxGamer.pics caso nï¿½o exista mais na Live original
+                                    pbCurrent.Image = Image.FromStream(new WebClient().OpenRead(String.Format("https://assets.xboxgamer.pics/titles/{0}/2{1:x4}.png", titleId, imageId)));
                                     pbCurrent.Tag = titleId + imageId;
                                 }
                                 catch
@@ -257,7 +257,7 @@ namespace Horizon.PackageEditors.Gamer_Picture_Manager
 
                 progressSearch.Style = ProgressBarStyle.Marquee;
 
-                // Scraping Assíncrono para obter todas as imagens de uma vez na velocidade da luz!
+                // Scraping Assï¿½ncrono para obter todas as imagens de uma vez na velocidade da luz!
                 System.Threading.ThreadPool.QueueUserWorkItem(state =>
                 {
                     bool scrapedSuccessfully = false;
@@ -296,7 +296,7 @@ namespace Horizon.PackageEditors.Gamer_Picture_Manager
                                                 cmdAddAll.Enabled = !panelProfile.Visible;
                                             });
                                             usedIds[titleIdString].Add(imageId);
-                                            Thread.Sleep(10); // Pausa leve para UI não travar
+                                            Thread.Sleep(10); // Pausa leve para UI nï¿½o travar
                                         }
                                         catch { }
                                     }
@@ -313,7 +313,7 @@ namespace Horizon.PackageEditors.Gamer_Picture_Manager
                     }
                     else
                     {
-                        // Fallback Clássico: Se o Scraping falhar, ele usa o modo antigo com tentativa e erro
+                        // Fallback Clï¿½ssico: Se o Scraping falhar, ele usa o modo antigo com tentativa e erro
                         this.Invoke((MethodInvoker)delegate {
                             lowerThread = new Thread(new ParameterizedThreadStart(searchForPics));
                             lowerThread.Start(new SearchParameters() { TitleID = titleIdString, IsUpper = false, EndID = -1 });
@@ -371,7 +371,7 @@ namespace Horizon.PackageEditors.Gamer_Picture_Manager
                         }
                         catch
                         {
-                            // Fallback pelo XboxGamer.pics caso a imagem não exista na MS
+                            // Fallback pelo XboxGamer.pics caso a imagem nï¿½o exista na MS
                             try
                             {
                                 string fallbackUrl = string.Format("https://assets.xboxgamer.pics/titles/{0}/2{1:x4}.png", par.TitleID, x);
@@ -480,8 +480,8 @@ namespace Horizon.PackageEditors.Gamer_Picture_Manager
         {
             if (txtGameName.Text.Length != 0)
             {
-                // Como o doSearchTitle do TitleIDFinder já foi alterado para buscar online, 
-                // ele traz tudo sem necessidade de código extra aqui!
+                // Como o doSearchTitle do TitleIDFinder jï¿½ foi alterado para buscar online, 
+                // ele traz tudo sem necessidade de cï¿½digo extra aqui!
                 List<ListViewItem> titleList = TitleIDFinder.doSearchTitle(txtGameName.Text);
 
                 if (titleList.Count == 0)

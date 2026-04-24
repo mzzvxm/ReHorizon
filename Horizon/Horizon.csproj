@@ -126,6 +126,9 @@
     <Compile Include="Forms\ProfileSelector.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Forms\ProfileCreatorWizard.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Forms\ProfileSelector.Designer.cs">
       <DependentUpon>ProfileSelector.cs</DependentUpon>
     </Compile>
@@ -2080,6 +2083,60 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Horizon.64.ico" />
+    <Content Include="Resources\AvatarCreate_Thumb.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ProfileManager\Assets\20000.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ProfileManager\Assets\20001.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ProfileManager\Assets\20002.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ProfileManager\Assets\20003.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ProfileManager\Assets\20004.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ProfileManager\Assets\20005.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ProfileManager\Assets\20006.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ProfileManager\Assets\20007.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ProfileManager\Assets\20008.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ProfileManager\Assets\20009.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ProfileManager\Assets\2000A.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ProfileManager\Assets\2000B.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ProfileManager\Assets\2000C.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ProfileManager\Assets\avatarJumping.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ProfileManager\Assets\avatarMale.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ProfileManager\Assets\avatarFemale.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ProfileManager\Assets\femaleAvatar.bin">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <None Include="Resources\DragonBallXenoVerse_Thumb.png" />
     <None Include="Resources\ForzaHorizon2_FnF_Thumb.png" />
     <None Include="Resources\SaintsRowGOOH_Thumb.png" />

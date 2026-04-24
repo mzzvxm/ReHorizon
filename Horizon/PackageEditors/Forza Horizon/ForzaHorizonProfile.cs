@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -89,7 +89,7 @@ namespace Horizon.PackageEditors.Forza_Horizon
             }
             else
             {
-                ribbonTabItem1.Visible = false;
+                ribbonTabItem1.Visible = true;
             }
 
             if (!LoadSaveData())
@@ -312,14 +312,14 @@ namespace Horizon.PackageEditors.Forza_Horizon
                 case ForzaTypes.CarId:
                 case ForzaTypes.UInt32:
                     {
-                        // Primary: parse as uint (handles 0 – 4294967295)
+                        // Primary: parse as uint (handles 0 â€“ 4294967295)
                         uint u32;
                         if (uint.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out u32))
                         {
                             writer.Write(u32);
                             break;
                         }
-                        // Fallback: parse as signed int and reinterpret bits (handles -1, -2, …)
+                        // Fallback: parse as signed int and reinterpret bits (handles -1, -2, â€¦)
                         // This is intentional: some Forza fields store bit-patterns that look negative
                         // as signed int32 but are valid uint32 when the bits are kept intact.
                         int i32;
@@ -613,7 +613,7 @@ namespace Horizon.PackageEditors.Forza_Horizon
                 }
             }
 
-            // Bug Fix 2: inicializar caches estaticos uma única vez
+            // Bug Fix 2: inicializar caches estaticos uma Ãºnica vez
             if (_carBins == null)
                 _carBins = new Dictionary<int, byte[]>();
             if (_carThumbs == null)
@@ -705,7 +705,7 @@ namespace Horizon.PackageEditors.Forza_Horizon
                     }
                     catch
                     {
-                        // Thumbnail nao encontrada — continua sem ela; nao e' critico
+                        // Thumbnail nao encontrada â€” continua sem ela; nao e' critico
                         _carThumbs.Add(car.CarId, new byte[0]);
                     }
                 }
@@ -730,7 +730,7 @@ namespace Horizon.PackageEditors.Forza_Horizon
         {
             foreach (var carId in carIdList)
             {
-                // Bug Fix 6: nao adicionar duplicatas — verifica se o carro já está na lista
+                // Bug Fix 6: nao adicionar duplicatas â€” verifica se o carro jÃ¡ estÃ¡ na lista
                 if (_carList.Exists(c => c.CarId == carId))
                     continue;
 

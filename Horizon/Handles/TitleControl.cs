@@ -170,6 +170,7 @@ namespace Horizon
             AccountEditor = "ACCOUNT",
             TitleIDFinder = "TITLEID",
             ThemeCreator = "THEME",
+            AvatarCreator = "AVACRT",
             PackageManager = "PACKAGE",
             FATX = "FATX",
             GamercardViewer = "GCARD",

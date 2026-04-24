@@ -195,8 +195,11 @@ namespace Horizon.PackageEditors.Midnight_Club_LA
         {
             if (_saveGame != null && _saveGame.Career != null)
             {
-                // Chama a função que injeta as flags de unlock na array do save
                 _saveGame.Career.UnlockAll();
+
+                // Força a UI a atualizar com os novos valores injetados pelo UnlockAll
+                this.cmbReputationRank.SelectedItem = "Rank 11: Idol";
+
                 MessageBox.Show("All vehicles and progression unlocked!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }

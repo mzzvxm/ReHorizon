@@ -107,20 +107,14 @@ namespace Rockstar
         }
 
         // ==========================================================
-        // UNLOCK ALL (Baseado no Assembly sub_82388340 e .rdata)
+        // UNLOCK ALL (Abordagem Revisada - Focando em Reputação)
         // ==========================================================
         public void UnlockAll()
         {
-            // O intervalo 0x110 a 0x220 no bloco Career cobre as flags 
-            // byte_8288E5B9 até byte_8288E5BE e as secundárias citadas no IDA.
-            for (int i = 0; i < _careerRawData.Length; i++)
-            {
-                // Aplicamos 0x01 (True) na região de progressão e unlocks
-                if (i >= 0x110 && i <= 0x220)
-                {
-                    _careerRawData[i] = 0x01;
-                }
-            }
+            // A forma mais segura de "desbloquear tudo" no MCLA através de um editor
+            // é forçar o nível de reputação (Rank) para o máximo, o que diz ao jogo
+            // para liberar os carros e peças na loja.
+            this.Reputation = 75000; // Rank 11: Idol
         }
     }
 

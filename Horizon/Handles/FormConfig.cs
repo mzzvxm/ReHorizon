@@ -8,7 +8,9 @@ using Horizon.Server;
 using Horizon.Functions;
 using Horizon.PackageEditors;
 using System.Xml.XPath;
+using System.IO;
 using Horizon.Forms;
+using XContent;
 
 namespace Horizon
 {
@@ -34,8 +36,9 @@ namespace Horizon
             addForm(FormID.FATX, null, "Device Explorer", FormType.Tool, Resources.DeviceExplorer_Thumb, FormAccess.Anyone);
             addForm(FormID.GamerPictureManager, typeof(PackageEditors.Gamer_Picture_Manager.GamerPictureManager), "Gamer Pic Pack Creator", FormType.Tool, Resources.GamerPictureManager_Thumb, FormAccess.Anyone);
             addForm(FormID.GamercardViewer, typeof(GamercardViewer), "Gamercard Viewer", FormType.Tool, Resources.GamercardViewer_Thumb, FormAccess.Anyone);
-            addForm(FormID.PackageManager, typeof(PackageEditors.Package_Manager.PackageManager), "Package Manager", FormType.Tool, Resources.Manager_Thumb, FormAccess.Anyone);
             addForm(FormID.ThemeCreator, typeof(PackageEditors.Theme_Creator.ThemeCreator), "Theme Creator", FormType.Tool, Resources.Theme_Thumb, FormAccess.Anyone);
+            addForm(FormID.AvatarCreator, null, "Avatar Creator", FormType.Tool, loadAvatarCreatorThumb(), FormAccess.Anyone);
+            addForm(FormID.PackageManager, typeof(PackageEditors.Package_Manager.PackageManager), "Package Manager", FormType.Tool, Resources.Manager_Thumb, FormAccess.Anyone);
             addForm(FormID.TitleIDFinder, typeof(TitleIDFinder), "Title ID Finder", FormType.Tool, Resources.FindTID_Thumb, FormAccess.Anyone);
 
             // Profile Modders
@@ -205,6 +208,29 @@ namespace Horizon
             // Silencia a mensagem chata de "Upgrade to Diamond"
         }
 
+        private static Image avatarCreatorThumb;
+        private static Image loadAvatarCreatorThumb()
+        {
+            if (avatarCreatorThumb != null)
+                return avatarCreatorThumb;
+
+            try
+            {
+                string resourcesDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources");
+                string thumbPath = Path.Combine(resourcesDirectory, "AvatarCreate_Thumb.png");
+                if (File.Exists(thumbPath))
+                {
+                    using (Image loaded = Image.FromFile(thumbPath))
+                        avatarCreatorThumb = new Bitmap(loaded);
+                    return avatarCreatorThumb;
+                }
+            }
+            catch { }
+
+            avatarCreatorThumb = Resources.Profile_Thumb;
+            return avatarCreatorThumb;
+        }
+
         internal struct ButtonMeta
         {
             public byte FormMetaIndex;
@@ -283,6 +309,20 @@ namespace Horizon
                     break;
                 case FormID.TitleIDFinder:
                     new TitleIDFinder().Show();
+                    break;
+                case FormID.AvatarCreator:
+                    using (ProfileCreatorWizard wizard = new ProfileCreatorWizard())
+                    {
+                        if (wizard.ShowDialog(Main.mainForm) == DialogResult.OK
+                            && wizard.CreatedProfilePath != null
+                            && wizard.CreatedProfilePath.Length != 0
+                            && File.Exists(wizard.CreatedProfilePath))
+                        {
+                            XContentPackage package = new XContentPackage();
+                            if (package.LoadPackage(wizard.CreatedProfilePath, false))
+                                FormHandle.initializeNewPackageManager(package);
+                        }
+                    }
                     break;
                 default:
                     FormHandle.tempRefGlass = !FormHandle.Forms[x].Meta.UseMDI;

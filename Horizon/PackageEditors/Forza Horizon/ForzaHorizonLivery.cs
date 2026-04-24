@@ -289,6 +289,68 @@ namespace Horizon.PackageEditors.Forza_Horizon
             _liveryFile.Inject(fileData);
         }
 
+        private void BtnClickApplyStanceMod(object sender, EventArgs e)
+        {
+            // 1. Verifica se estamos trabalhando com um CarSetup
+            if (_liveryFile == null || cmbLiveryType.Text.ToLower() != "carsetup")
+            {
+                MessageBox.Show("Por favor, selecione a opção 'CarSetup' na lista e carregue um arquivo válido primeiro.",
+                                "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // 2. Pede para o usuário selecionar o arquivo CarSetup que ele extraiu para o PC
+            var ofd = new OpenFileDialog();
+            ofd.Title = "Selecione o arquivo CarSetup extraído para aplicar o Mod";
+            if (ofd.ShowDialog() != DialogResult.OK)
+                return;
+
+            try
+            {
+                // Lê os bytes brutos do arquivo
+                byte[] setupData = File.ReadAllBytes(ofd.FileName);
+
+                // Segurança: Verifica se o arquivo é grande o suficiente para ter os offsets
+                if (setupData.Length < 0x150)
+                {
+                    MessageBox.Show("Arquivo de CarSetup inválido ou muito pequeno.", "Erro", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                // ==============================================================
+                // MÁGICA DOS OFFSETS (Exclusivo para Gamertags de 6 Letras)
+                // 00 00 00 00 = 0.0f (Valor máximo de stance/rebaixamento)
+                // ==============================================================
+
+                // Front Camber (Offset: 100 | Hex: 0x100 a 0x103)
+                setupData[0x100] = 0x00; setupData[0x101] = 0x00; setupData[0x102] = 0x00; setupData[0x103] = 0x00;
+
+                // Back Camber (Offset: 120 + 0C | Hex: 0x10C a 0x10F)
+                setupData[0x10C] = 0x00; setupData[0x10D] = 0x00; setupData[0x10E] = 0x00; setupData[0x10F] = 0x00;
+
+                // Front Ride Height (Offset: 110 + 04 | Hex: 0x114 a 0x117)
+                setupData[0x114] = 0x00; setupData[0x115] = 0x00; setupData[0x116] = 0x00; setupData[0x117] = 0x00;
+
+                // Back Ride Height (Offset: 140 | Hex: 0x140 a 0x143)
+                setupData[0x140] = 0x00; setupData[0x141] = 0x00; setupData[0x142] = 0x00; setupData[0x143] = 0x00;
+
+                // ==============================================================
+
+                // 3. Salva as alterações no arquivo físico (opcional, mas bom pra backup)
+                File.WriteAllBytes(ofd.FileName, setupData);
+
+                // 4. Injeta os bytes modificados automaticamente de volta no SaveGame
+                _liveryFile.Inject(setupData);
+
+                MessageBox.Show("Stance Mod aplicado com sucesso!\n\nCambagem e Suspensão foram zeradas. Não se esqueça de clicar em 'Save/Unlock' para finalizar.",
+                                "Sucesso", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro fatal ao tentar modificar os bytes:\n\n" + ex.Message, "Erro Crítico", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
         private void BtnClickSaveLivery(object sender, EventArgs e)
         {
             UnlockLivery(btnLiveryIsUnlocked.Checked);
