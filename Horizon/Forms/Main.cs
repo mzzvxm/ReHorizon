@@ -23,6 +23,7 @@ namespace Horizon.Forms
         internal Main(string newsURL)
         {
             InitializeComponent();
+            webAd.Visible = false; // Keep ad panel hidden for all users/states.
             mainForm = this;
             if (newsURL.Length != 0)
                 setNewsURL(newsURL);
@@ -58,10 +59,6 @@ namespace Horizon.Forms
             if (FatxHandle.openOnOpen)
                 FatxPanelExpanded = true;
             nextClipboardViewer = (IntPtr)ClipboardHelper.SetClipboardViewer(Handle.ToInt32());
-            if (User.isLogged)
-            {
-                webAd.Visible = false;
-            }
             //new WebClient().DownloadStringAsync(new Uri(Config.baseURL + "keys.aes"));
             //SaveSharer.Open();
         }
